@@ -15,8 +15,6 @@ func (reg *Registry[E]) ReadFrom(r io.Reader) (int64, error) {
 		return n, err
 	}
 
-	reg.Clear()
-
 	var key pk.Identifier
 	var hasData pk.Boolean
 	for i := 0; i < int(length); i++ {
@@ -38,7 +36,6 @@ func (reg *Registry[E]) ReadFrom(r io.Reader) (int64, error) {
 			if err != nil {
 				return n + n1 + n2 + n3, err
 			}
-			reg.Put(string(key), data)
 		}
 
 		n += n1 + n2 + n3
