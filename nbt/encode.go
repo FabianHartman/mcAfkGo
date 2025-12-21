@@ -1,7 +1,6 @@
 package nbt
 
 import (
-	"bytes"
 	"encoding"
 	"errors"
 	"fmt"
@@ -11,15 +10,6 @@ import (
 	"strconv"
 	"unsafe"
 )
-
-// Marshal is the shortcut of NewEncoder().Encode() with empty tag name.
-// Notices that repeatedly init buffers is low efficiency.
-// Using Encoder and Reset the buffer in each time is recommended in that cases.
-func Marshal(v any) ([]byte, error) {
-	var buf bytes.Buffer
-	err := NewEncoder(&buf).Encode(v, "")
-	return buf.Bytes(), err
-}
 
 type Encoder struct {
 	w             io.Writer

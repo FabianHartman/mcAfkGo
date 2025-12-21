@@ -18,26 +18,6 @@ const DefaultPort = 25565
 // A Listener is a minecraft Listener
 type Listener struct{ net.Listener }
 
-// ListenMC listen as TCP but Accept a mc Conn
-func ListenMC(addr string) (*Listener, error) {
-	l, err := net.Listen("tcp", addr)
-	if err != nil {
-		return nil, err
-	}
-	return &Listener{l}, nil
-}
-
-// Accept a minecraft Conn
-func (l Listener) Accept() (Conn, error) {
-	conn, err := l.Listener.Accept()
-	return Conn{
-		Socket:    conn,
-		Reader:    conn,
-		Writer:    conn,
-		threshold: -1,
-	}, err
-}
-
 // Conn is a minecraft Connection
 type Conn struct {
 	Socket net.Conn
@@ -49,36 +29,10 @@ type Conn struct {
 
 var DefaultDialer = Dialer{}
 
-// DialMC create a Minecraft connection
-// Lookup SRV records only if port doesn't exist or equals to 0.
-func DialMC(addr string) (*Conn, error) {
-	return DefaultDialer.DialMCContext(context.Background(), addr)
-}
-
-// DialMCTimeout acts like DialMC but takes a timeout.
-func DialMCTimeout(addr string, timeout time.Duration) (*Conn, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-	defer cancel()
-	return DefaultDialer.DialMCContext(ctx, addr)
-}
-
-// MCDialer provide DialMCContext method, can be used to dial a minecraft server.
-// [Dialer] is its default implementation, and support SRV lookup.
-//
-// Typically, if you want to use built-in proxies or custom dialer,
-// you can hook go-mc/bot package by implement this interface.
-// When implementing a custom MCDialer, SRV lookup is optional.
 type MCDialer interface {
-	// The DialMCContext dial TCP connection to a minecraft server, and warp the net.Conn by calling [WrapConn].
 	DialMCContext(ctx context.Context, addr string) (*Conn, error)
 }
 
-// Dialer implements MCDialer interface.
-//
-// It can be easily convert from net.Dialer.
-//
-//	dialer := net.Dialer{}
-//	mcDialer := (*Dialer)(&dialer)
 type Dialer net.Dialer
 
 func (d *Dialer) resolver() *net.Resolver {
@@ -149,14 +103,6 @@ func (d *Dialer) DialMCContext(ctx context.Context, addr string) (*Conn, error) 
 	return nil, firstErr
 }
 
-// deadline returns the earliest of:
-//   - now+Timeout
-//   - d.Deadline
-//   - the context's deadline
-//
-// Or zero, if none of Timeout, Deadline, or context's deadline is set.
-//
-// Copied from net/dial.go
 func (d *Dialer) deadline(ctx context.Context, now time.Time) (earliest time.Time) {
 	if d.Timeout != 0 { // including negative, for historical reasons
 		earliest = now.Add(d.Timeout)

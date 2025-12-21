@@ -28,35 +28,6 @@ type Type struct {
 	TargetName *Message
 }
 
-func (t *Type) Decorate(content Message, d *Decoration) (msg Message) {
-	with := make([]any, len(d.Parameters))
-	for i, para := range d.Parameters {
-		switch para {
-		case "sender":
-			with[i] = t.SenderName
-		case "target":
-			with[i] = *t.TargetName
-		case "content":
-			with[i] = content
-		default:
-			with[i] = Text("<nil>")
-		}
-	}
-	return Message{
-		Translate: d.TranslationKey,
-		With:      with,
-
-		Bold:          d.Style.Bold,
-		Italic:        d.Style.Italic,
-		UnderLined:    d.Style.UnderLined,
-		StrikeThrough: d.Style.StrikeThrough,
-		Obfuscated:    d.Style.Obfuscated,
-		Font:          d.Style.Font,
-		Color:         d.Style.Color,
-		Insertion:     d.Style.Insertion,
-	}
-}
-
 func (t *Type) ReadFrom(r io.Reader) (n int64, err error) {
 	var hasTargetName pk.Boolean
 	n1, err := (*pk.VarInt)(&t.ID).ReadFrom(r)

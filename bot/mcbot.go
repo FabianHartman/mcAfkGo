@@ -1,7 +1,3 @@
-// Package bot implements a simple Minecraft client that can join a server
-// or just ping it for getting information.
-//
-// Runnable example could be found at examples/ .
 package bot
 
 import (
@@ -42,13 +38,6 @@ type JoinOptions struct {
 // Using roughly the same way to parse address as minecraft.
 func (c *Client) JoinServer(addr string) (err error) {
 	return c.JoinServerWithOptions(addr, JoinOptions{})
-}
-
-// JoinServerWithDialer is similar to JoinServer but using a net.Dialer.
-func (c *Client) JoinServerWithDialer(dialer *net.Dialer, addr string) (err error) {
-	return c.JoinServerWithOptions(addr, JoinOptions{
-		MCDialer: (*mcnet.Dialer)(dialer),
-	})
 }
 
 func (c *Client) JoinServerWithOptions(addr string, options JoinOptions) (err error) {

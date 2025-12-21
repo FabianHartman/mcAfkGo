@@ -3,8 +3,6 @@ package user
 import (
 	"io"
 
-	"github.com/google/uuid"
-
 	pk "mcAfkGo/net/packet"
 )
 
@@ -32,16 +30,4 @@ func (p *Property) ReadFrom(r io.Reader) (n int64, err error) {
 	}.ReadFrom(r)
 	p.Signature = string(signature.Val)
 	return
-}
-
-// Texture includes player's skin and cape
-type Texture struct {
-	TimeStamp int64     `json:"timestamp"`
-	ID        uuid.UUID `json:"profileId"`
-	Name      string    `json:"profileName"`
-	Textures  struct {
-		SKIN, CAPE struct {
-			URL string `json:"url"`
-		}
-	} `json:"textures"`
 }

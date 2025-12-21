@@ -1,7 +1,6 @@
 package nbt
 
 import (
-	"bytes"
 	"encoding"
 	"errors"
 	"fmt"
@@ -10,13 +9,6 @@ import (
 	"reflect"
 	"strings"
 )
-
-// Unmarshal decode binary NBT data and fill into v
-// This is a shortcut to `NewDecoder(bytes.NewReader(data)).Decode(v)`.
-func Unmarshal(data []byte, v any) error {
-	_, err := NewDecoder(bytes.NewReader(data)).Decode(v)
-	return err
-}
 
 // Decode method decodes an NBT value from the reader underline the Decoder into v.
 // Internally try to handle all possible v by reflection,

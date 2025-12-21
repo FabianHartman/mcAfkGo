@@ -1,7 +1,6 @@
 package user
 
 import (
-	"crypto"
 	"crypto/rsa"
 	"crypto/x509"
 	"errors"
@@ -56,8 +55,4 @@ func (p *PublicKey) ReadFrom(r io.Reader) (n int64, err error) {
 
 	p.Signature = Signature
 	return n, nil
-}
-
-func (p *PublicKey) VerifyMessage(hash, signature []byte) error {
-	return rsa.VerifyPKCS1v15(p.PubKey, crypto.SHA256, hash, signature)
 }

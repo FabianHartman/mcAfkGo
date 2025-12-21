@@ -28,21 +28,11 @@ func (e *Events) AddListener(listeners ...PacketHandler) {
 	}
 }
 
-// AddGeneric adds listeners like AddListener, but the packet ID is ignored.
-// Generic listener is always called before specific packet listener.
-func (e *Events) AddGeneric(listeners ...PacketHandler) {
-	e.generic = append(e.generic, listeners...)
-	sortPacketHandlers(e.generic)
+type PacketHandler struct {
+	ID       packetid.ClientboundPacketID
+	Priority int
+	F        func(p pk.Packet) error
 }
-
-type (
-	PacketHandlerFunc func(p pk.Packet) error
-	PacketHandler     struct {
-		ID       packetid.ClientboundPacketID
-		Priority int
-		F        func(p pk.Packet) error
-	}
-)
 
 func sortPacketHandlers(slice []PacketHandler) {
 	sort.SliceStable(slice, func(i, j int) bool {

@@ -7,24 +7,6 @@ import (
 	"reflect"
 )
 
-var (
-	_ Field = (*Option[VarInt, *VarInt])(nil)
-	_ Field = (*Ary[VarInt])(nil)
-	_ Field = Tuple(nil)
-)
-
-// Ary is used to send or receive the packet field like "Array of X"
-// which has a count must be known from the context.
-//
-// Typically, you must decode an integer representing the length. Then
-// receive the corresponding amount of data according to the length.
-// In this case, the field Len should be a pointer of integer type so
-// the value can be updating when Packet.Scan() method is decoding the
-// previous field.
-// In some special cases, you might want to read an "Array of X" with a fix length.
-// So it's allowed to directly set an integer type Len, but not a pointer.
-//
-// Note that Ary DO read or write the Len. You aren't need to do so by your self.
 type Ary[LEN VarInt | VarLong | Byte | UnsignedByte | Short | UnsignedShort | Int | Long] struct {
 	Ary any // Slice or Pointer of Slice of FieldEncoder, FieldDecoder or both (Field)
 }
@@ -153,38 +135,6 @@ type fieldPointer[T any] interface {
 	FieldDecoder
 }
 
-// Option is a helper type for encoding/decoding these kind of packet:
-//
-//	+-----------+------------+----------------------------------- +
-//	| Name      | Type       | Notes                              |
-//	+-----------+------------+------------------------------------+
-//	| Has Value | Boolean    | Whether the Value should be sent.  |
-//	+-----------+------------+------------------------------------+
-//	| Value     | Optional T | Only exist when Has Value is true. |
-//	+-----------+------------+------------------------------------+
-//
-// # Usage
-//
-// `Option[T]` implements [FieldEncoder] and `*Option[T]` implements [FieldDecoder].
-// That is, you can call `WriteTo()` and `ReadFrom()` methods on it.
-//
-//	var optStr Option[String]
-//	n, err := optStr.ReadFrom(r)
-//	if err != nil {
-//		// ...
-//	}
-//	if optStr.Has {
-//		fmt.Println(optStr.Val)
-//	}
-//
-// # Notes
-//
-// Currently we have to repeat T in the type arguments.
-//
-//	var opt Option[String, *String]
-//
-// Constraint type will inference makes it less awkward in the future.
-// See: https://github.com/golang/go/issues/54469
 type Option[T FieldEncoder, P fieldPointer[T]] struct {
 	Has Boolean
 	Val T
@@ -284,8 +234,6 @@ func CreateByteReader(reader io.Reader) io.ByteReader {
 type byteReaderWrapper struct {
 	io.Reader
 }
-
-var _ io.ByteReader = byteReaderWrapper{}
 
 func (r byteReaderWrapper) ReadByte() (byte, error) {
 	var buf [1]byte

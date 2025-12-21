@@ -1,13 +1,3 @@
-// Package chat implements Minecraft's chat message encoding system.
-//
-// The type Message is the Minecraft chat message. Can be encoded as JSON
-// or net/packet.Field .
-//
-// It's very recommended that use SetLanguage before using Message.String or Message.ClearString,
-// or the `mcAfkGo/data/en-us` will be used.
-// Note: The package of data/lang/... will SetLanguage on theirs init() so you don't need to call by your self.
-//
-// Some of these docs is copied from https://wiki.vg/Chat.
 package chat
 
 import (
@@ -16,17 +6,6 @@ import (
 	"strings"
 
 	en_us "mcAfkGo/data/lang/en-us"
-)
-
-const (
-	Chat = iota
-	System
-	GameInfo
-	SayCommand
-	MsgCommand
-	TeamMsgCommand
-	EmoteCommand
-	TellrawCommand
 )
 
 // Colors
@@ -58,14 +37,10 @@ type Message struct {
 	UnderLined    bool `json:"underlined,omitempty" nbt:"underlined,omitempty"`       // 下划线
 	StrikeThrough bool `json:"strikethrough,omitempty" nbt:"strikethrough,omitempty"` // 删除线
 	Obfuscated    bool `json:"obfuscated,omitempty" nbt:"obfuscated,omitempty"`       // 随机
-	// Font of the message, could be one of minecraft:uniform, minecraft:alt or minecraft:default
-	// This option is only valid on 1.16+, otherwise the property is ignored.
-	Font  string `json:"font,omitempty" nbt:"font,omitempty"`   // 字体
-	Color string `json:"color,omitempty" nbt:"color,omitempty"` // 颜色
 
-	// Insertion contains text to insert. Only used for messages in chat.
-	// When shift is held, clicking the component inserts the given text
-	// into the chat box at the cursor (potentially replacing selected text).
+	Font  string `json:"font,omitempty" nbt:"font,omitempty"`
+	Color string `json:"color,omitempty" nbt:"color,omitempty"`
+
 	Insertion  string      `json:"insertion,omitempty" nbt:"insertion,omitempty"`
 	HoverEvent *HoverEvent `json:"hoverEvent,omitempty" nbt:"hoverEvent,omitempty"`
 
@@ -76,7 +51,6 @@ type Message struct {
 
 type TranslateArgs []any
 
-// Same as Message, but "Text" is omitempty
 type translateMsg struct {
 	Text string `json:"text,omitempty" nbt:"text,omitempty"`
 
@@ -99,38 +73,8 @@ type translateMsg struct {
 
 type rawMsgStruct Message
 
-// Append extra message to the end of the message and return the new one.
-// The source message remains unchanged.
-func (m Message) Append(extraMsg ...Message) Message {
-	origLen := len(m.Extra)
-	finalLen := origLen + len(extraMsg)
-	var extra []Message
-	if cap(m.Extra) < len(m.Extra)+len(extraMsg) {
-		extra = make([]Message, finalLen)
-		copy(extra, m.Extra)
-	} else {
-		extra = m.Extra[:finalLen]
-	}
-	copy(extra[origLen:], extraMsg)
-	m.Extra = extra
-	return m
-}
-
-func (m Message) SetColor(color string) Message {
-	m.Color = color
-	return m
-}
-
 func Text(str string) Message {
 	return Message{Text: str}
-}
-
-func TranslateMsg(key string, with ...Message) (m Message) {
-	m.Translate = key
-	for _, v := range with {
-		m.With = append(m.With, v)
-	}
-	return
 }
 
 var fmtCode = map[byte]string{
@@ -182,11 +126,6 @@ var colors = map[string]string{
 // By default, it's en-us.
 var translateMap = en_us.Map
 
-// SetLanguage set the default language used by String() and ClearString().
-func SetLanguage(trans map[string]string) {
-	translateMap = trans
-}
-
 // ClearString return the message String without escape sequence for ansi color.
 func (m Message) ClearString() string {
 	var msg strings.Builder
@@ -216,9 +155,6 @@ func (m Message) ClearString() string {
 	return msg.String()
 }
 
-// String return the message string with escape sequence for ansi color.
-// To convert Translated Message to string, you must set
-// On Windows, you may want print this string using github.com/mattn/go-colorable.
 func (m Message) String() string {
 	var msg, format strings.Builder
 	if m.Bold {
@@ -280,5 +216,6 @@ func TransCtrlSeq(str string, ansi bool) (dst string, change bool) {
 			return str // not a § code
 		},
 	)
+
 	return
 }

@@ -426,16 +426,6 @@ func (p *Position) ReadFrom(r io.Reader) (n int64, err error) {
 	return
 }
 
-// ToDeg convert Angle to Degree
-func (a Angle) ToDeg() float64 {
-	return 360 * float64(a) / 256
-}
-
-// ToRad convert Angle to Radian
-func (a Angle) ToRad() float64 {
-	return 2 * math.Pi * float64(a) / 256
-}
-
 func (a Angle) WriteTo(w io.Writer) (int64, error) {
 	return Byte(a).WriteTo(w)
 }
@@ -628,31 +618,6 @@ func (b *BitSet) ReadFrom(r io.Reader) (n int64, err error) {
 	return
 }
 
-func (b BitSet) Get(index int) bool {
-	return (b[index/64] & (1 << (index % 64))) != 0
-}
-
-func (b BitSet) Set(index int, value bool) {
-	if value {
-		b[index/64] |= 1 << (index % 64)
-	} else {
-		b[index/64] &= ^(1 << (index % 64))
-	}
-}
-
-func (b BitSet) Len() int {
-	return len(b) * 64
-}
-
-// NewFixedBitSet make a [FixedBitSet] which can store n bits at least.
-// If n <= 0, return nil
-func NewFixedBitSet(n int64) FixedBitSet {
-	if n < 0 {
-		return nil
-	}
-	return make(FixedBitSet, (n+7)/8)
-}
-
 func (f FixedBitSet) WriteTo(w io.Writer) (n int64, err error) {
 	n2, err := w.Write(f)
 	return int64(n2), err
@@ -661,20 +626,4 @@ func (f FixedBitSet) WriteTo(w io.Writer) (n int64, err error) {
 func (f FixedBitSet) ReadFrom(r io.Reader) (n int64, err error) {
 	n2, err := r.Read(f)
 	return int64(n2), err
-}
-
-func (f FixedBitSet) Get(index int) bool {
-	return (f[index/8] & (1 << (index % 8))) != 0
-}
-
-func (f FixedBitSet) Set(index int, value bool) {
-	if value {
-		f[index/8] |= 1 << (index % 8)
-	} else {
-		f[index/8] &= ^(1 << (index % 8))
-	}
-}
-
-func (f FixedBitSet) Len() int {
-	return len(f) * 8
 }

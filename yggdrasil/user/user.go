@@ -5,15 +5,10 @@ import (
 	"encoding/pem"
 	"errors"
 	"io"
-	"net/http"
 	"time"
 
 	pk "mcAfkGo/net/packet"
 )
-
-var ServicesURL = "https://api.minecraftservices.com"
-
-var client = http.DefaultClient
 
 type KeyPairResp struct {
 	KeyPair struct {

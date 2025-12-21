@@ -33,10 +33,6 @@ func (l LoginErr) Error() string {
 	return "bot: login error: [" + l.Stage + "] " + l.Err.Error()
 }
 
-func (l LoginErr) Unwrap() error {
-	return l.Err
-}
-
 func (c *Client) joinLogin(conn *net.Conn) error {
 	var err error
 	if c.Auth.UUID != "" {
@@ -154,7 +150,6 @@ type Auth struct {
 }
 
 func handleEncryptionRequest(conn *net.Conn, c *Client, p pk.Packet) error {
-	// 创建AES对称加密密钥
 	key, encoStream, decoStream := newSymmetricEncryption()
 
 	// Read EncryptionRequest
@@ -168,7 +163,6 @@ func handleEncryptionRequest(conn *net.Conn, c *Client, p pk.Packet) error {
 		return fmt.Errorf("login fail: %v", err)
 	}
 
-	// 响应加密请求
 	// Write Encryption Key Response
 	p, err = genEncryptionKeyResponse(key, er.PublicKey, er.VerifyToken)
 	if err != nil {
@@ -180,8 +174,8 @@ func handleEncryptionRequest(conn *net.Conn, c *Client, p pk.Packet) error {
 		return err
 	}
 
-	// 设置连接加密
 	conn.SetCipher(encoStream, decoStream)
+
 	return nil
 }
 

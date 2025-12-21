@@ -42,16 +42,9 @@ func (cf *CFB8) XORKeyStream(dst, src []byte) {
 		panic("cfb8: output smaller than input")
 	}
 
-	// If dst and src does not overlap in first block size,
-	// and the length of src is greater than 2*blockSize,
-	// we can use an optimized implementation.
 	if len(src) > cf.blockSize<<1 &&
 		(uintptr(unsafe.Pointer(&dst[0]))+uintptr(cf.blockSize) <= uintptr(unsafe.Pointer(&src[0])) ||
 			uintptr(unsafe.Pointer(&src[0]))+uintptr(len(src)) <= uintptr(unsafe.Pointer(&dst[0]))) {
-		// encrypt/decrypt first blockSize bytes
-		// After this, the IV will come to the same as
-		// the last blockSize of ciphertext, so
-		// we can reuse them without copy.
 		cf.xorKeyStream(dst, src[:cf.blockSize])
 		var ciphertext []byte
 		if cf.de {
