@@ -58,10 +58,6 @@ func (p *LinkedListQueue[T]) Close() {
 	p.cond.L.Unlock()
 }
 
-func NewChannelQueue[T any](n int) (q Queue[T]) {
-	return make(ChannelQueue[T], n)
-}
-
 type ChannelQueue[T any] chan T
 
 func (c ChannelQueue[T]) Push(v T) bool {

@@ -126,8 +126,6 @@ func (c *Client) joinConfiguration(conn *net.Conn) error {
 				return ConfigErr{"pong", err}
 			}
 
-		case packetid.ClientboundConfigResetChat:
-
 		case packetid.ClientboundConfigRegistryData:
 			const ErrStage = "registry"
 			var registryID pk.Identifier

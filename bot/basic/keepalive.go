@@ -22,7 +22,6 @@ func (p *Player) handleKeepAlivePacket(packet pk.Packet) error {
 
 	p.resetKeepAliveDeadline()
 
-	// Response
 	err := p.c.Conn.WritePacket(pk.Packet{
 		ID:   int32(packetid.ServerboundKeepAlive),
 		Data: packet.Data,

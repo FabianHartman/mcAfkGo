@@ -7,7 +7,6 @@ import (
 	pk "mcAfkGo/net/packet"
 )
 
-// WorldInfo content player info in server.
 type WorldInfo struct {
 	DimensionType       int32
 	DimensionNames      []string // Identifiers for all worlds on the server.
@@ -48,7 +47,6 @@ func (p *Player) handleLoginPacket(packet pk.Packet) error {
 		(*pk.Byte)(&p.PrevGamemode),
 		(*pk.Boolean)(&p.IsDebug),
 		(*pk.Boolean)(&p.IsFlat),
-		// Death dimension & Death location & Portal cooldown are ignored
 	)
 	if err != nil {
 		return Error{err}
