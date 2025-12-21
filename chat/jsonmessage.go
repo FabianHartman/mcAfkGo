@@ -9,10 +9,8 @@ import (
 	pk "mcAfkGo/net/packet"
 )
 
-// JsonMessage is Message, unless when it is going to be Json instead of NBT
 type JsonMessage Message
 
-// ReadFrom decode Message in a JSON Text component
 func (m *JsonMessage) ReadFrom(r io.Reader) (int64, error) {
 	var code pk.String
 	n, err := code.ReadFrom(r)
@@ -23,7 +21,6 @@ func (m *JsonMessage) ReadFrom(r io.Reader) (int64, error) {
 	return n, err
 }
 
-// WriteTo encode Message into a JSON Text component
 func (m JsonMessage) WriteTo(w io.Writer) (int64, error) {
 	code, err := json.Marshal(Message(m))
 	if err != nil {
@@ -45,8 +42,6 @@ func (m *Message) UnmarshalJSON(raw []byte) (err error) {
 	if len(raw) == 0 {
 		return io.EOF
 	}
-	// The right way to distinguish JSON String and Object
-	// is to look up the first character.
 	switch raw[0] {
 	case '"':
 		return json.Unmarshal(raw, &m.Text) // Unmarshal as jsonString

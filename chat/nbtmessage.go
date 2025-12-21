@@ -10,12 +10,10 @@ import (
 	pk "mcAfkGo/net/packet"
 )
 
-// ReadFrom decode Message in a Text component
 func (m *Message) ReadFrom(r io.Reader) (int64, error) {
 	return pk.NBT(m).ReadFrom(r)
 }
 
-// WriteTo encode Message into a Text component
 func (m Message) WriteTo(w io.Writer) (int64, error) {
 	return pk.NBT(&m).WriteTo(w)
 }
@@ -33,7 +31,6 @@ func (m Message) MarshalNBT(w io.Writer) error {
 }
 
 func (m *Message) UnmarshalNBT(tagType byte, r nbt.DecoderReader) error {
-	// Re-combine the tagType into the reader, and create a nbt decoder
 	tagReader := bytes.NewReader([]byte{tagType})
 	decoder := nbt.NewDecoder(io.MultiReader(tagReader, r))
 	decoder.NetworkFormat(true) // TagType directlly followed the body

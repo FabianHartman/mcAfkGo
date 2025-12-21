@@ -8,27 +8,6 @@ import (
 	en_us "mcAfkGo/data/lang/en-us"
 )
 
-// Colors
-const (
-	Black       = "black"
-	DarkBlue    = "dark_blue"
-	DarkGreen   = "dark_green"
-	DarkAqua    = "dark_aqua"
-	DarkRed     = "dark_red"
-	DarkPurple  = "dark_purple"
-	Gold        = "gold"
-	Gray        = "gray"
-	DarkGray    = "dark_gray"
-	Blue        = "blue"
-	Green       = "green"
-	Aqua        = "aqua"
-	Red         = "red"
-	LightPurple = "light_purple"
-	Yellow      = "yellow"
-	White       = "white"
-)
-
-// Message is a message sent by other
 type Message struct {
 	Text string `json:"text" nbt:"text"`
 
@@ -95,7 +74,6 @@ var fmtCode = map[byte]string{
 	'e': "93",
 	'f': "97",
 
-	// 'k':"",	//random
 	'l': "1",
 	'm': "9",
 	'n': "4",
@@ -103,36 +81,13 @@ var fmtCode = map[byte]string{
 	'r': "0",
 }
 
-var colors = map[string]string{
-	Black:       "30",
-	DarkBlue:    "34",
-	DarkGreen:   "32",
-	DarkAqua:    "36",
-	DarkRed:     "31",
-	DarkPurple:  "35",
-	Gold:        "33",
-	Gray:        "37",
-	DarkGray:    "90",
-	Blue:        "94",
-	Green:       "92",
-	Aqua:        "96",
-	Red:         "91",
-	LightPurple: "95",
-	Yellow:      "93",
-	White:       "97",
-}
-
-// translateMap is the translation table.
-// By default, it's en-us.
 var translateMap = en_us.Map
 
-// ClearString return the message String without escape sequence for ansi color.
 func (m Message) ClearString() string {
 	var msg strings.Builder
 	text, _ := TransCtrlSeq(m.Text, false)
 	msg.WriteString(text)
 
-	// handle translate
 	if m.Translate != "" {
 		args := make([]any, len(m.With))
 		for i, v := range m.With {
@@ -169,9 +124,6 @@ func (m Message) String() string {
 	if m.StrikeThrough {
 		format.WriteString("9;")
 	}
-	if m.Color != "" {
-		format.WriteString(colors[m.Color] + ";")
-	}
 	if format.Len() > 0 {
 		msg.WriteString("\033[" + format.String()[:format.Len()-1] + "m")
 	}
@@ -198,9 +150,6 @@ func (m Message) String() string {
 
 var fmtPat = regexp.MustCompile(`(?i)§[\dA-FK-OR]`)
 
-// TransCtrlSeq will transform control sequences into ANSI code
-// or simply filter them. Depends on the second argument.
-// if the str contains control sequences, returned change=true.
 func TransCtrlSeq(str string, ansi bool) (dst string, change bool) {
 	dst = fmtPat.ReplaceAllStringFunc(
 		str,

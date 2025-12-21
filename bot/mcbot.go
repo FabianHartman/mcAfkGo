@@ -13,29 +13,20 @@ import (
 	"mcAfkGo/yggdrasil/user"
 )
 
-// ProtocolVersion is the protocol version number of minecraft net protocol
-const (
-	ProtocolVersion = 767
-	DefaultPort     = mcnet.DefaultPort
-)
+const ProtocolVersion = 767
 
 type JoinOptions struct {
 	MCDialer mcnet.MCDialer
 	Context  context.Context
 
-	// Indicate not to fetch and sending player's PubKey
 	NoPublicKey bool
 
-	// Specify the player PubKey to use.
-	// If nil, it will be obtained from Mojang when joining
 	KeyPair *user.KeyPairResp
 
 	QueueRead  queue.Queue[pk.Packet]
 	QueueWrite queue.Queue[pk.Packet]
 }
 
-// JoinServer connect a Minecraft server for playing the game.
-// Using roughly the same way to parse address as minecraft.
 func (c *Client) JoinServer(addr string) (err error) {
 	return c.JoinServerWithOptions(addr, JoinOptions{})
 }
@@ -59,8 +50,6 @@ func (c *Client) JoinServerWithOptions(addr string, options JoinOptions) (err er
 func (c *Client) join(addr string, options JoinOptions) error {
 	const Handshake = 0x00
 
-	// Split Host and Port. The DialMCContext will do this once,
-	// but we need the result for sending handshake packet here.
 	host, portStr, err := net.SplitHostPort(addr)
 	var port uint64
 	if err != nil {
@@ -79,13 +68,11 @@ func (c *Client) join(addr string, options JoinOptions) error {
 		}
 	}
 
-	// Dial connection
 	conn, err := options.MCDialer.DialMCContext(options.Context, addr)
 	if err != nil {
 		return LoginErr{"connect server", err}
 	}
 
-	// Handshake
 	err = conn.WritePacket(pk.Marshal(
 		Handshake,
 		pk.VarInt(ProtocolVersion), // Protocol version
@@ -97,16 +84,16 @@ func (c *Client) join(addr string, options JoinOptions) error {
 		return LoginErr{"handshake", err}
 	}
 
-	// Login Start
 	if err := c.joinLogin(conn); err != nil {
 		return err
 	}
 
-	// Configuration
 	if err := c.joinConfiguration(conn); err != nil {
 		return err
 	}
+
 	c.Conn = warpConn(conn, options.QueueRead, options.QueueWrite)
+
 	return nil
 }
 
