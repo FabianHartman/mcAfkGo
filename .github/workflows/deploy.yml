@@ -51,5 +51,5 @@ jobs:
               sudo docker rmi -f $DOCKER_IMAGE_NAME
             fi
             sudo docker load -i $REMOTE_PATH
-            sudo docker run -d --name $DOCKER_CONTAINER_NAME -p 9123:8080 --restart unless-stopped $DOCKER_IMAGE_NAME
+            sudo docker run -d --name $DOCKER_CONTAINER_NAME --restart unless-stopped $DOCKER_IMAGE_NAME
           "
