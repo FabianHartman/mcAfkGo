@@ -2,12 +2,12 @@ package bot
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"io"
 
 	"mcAfkGo/chat"
 	"mcAfkGo/data/packetid"
+	"mcAfkGo/nbt"
 	"mcAfkGo/net"
 	pk "mcAfkGo/net/packet"
 )
@@ -138,7 +138,12 @@ func (c *Client) joinConfiguration(conn *net.Conn) error {
 
 			registry := c.Registries.Registry(string(registryID))
 			if registry == nil {
-				return ConfigErr{ErrStage, errors.New("unknown registry: " + string(registryID))}
+				// Skip unknown registries - we don't need them
+				_, err = idleRegistryDecoder{}.ReadFrom(r)
+				if err != nil {
+					return ConfigErr{ErrStage, fmt.Errorf("failed to skip registry %s: %w", registryID, err)}
+				}
+				continue
 			}
 
 			_, err = registry.ReadFrom(r)
@@ -340,6 +345,44 @@ func (d *DefaultConfigHandler) PopAllResourcePack() {
 
 func (d *DefaultConfigHandler) SelectDataPacks(packs []DataPack) []DataPack {
 	return []DataPack{}
+}
+
+type idleRegistryDecoder struct{}
+
+func (idleRegistryDecoder) ReadFrom(r io.Reader) (int64, error) {
+	var length pk.VarInt
+	n, err := length.ReadFrom(r)
+	if err != nil {
+		return n, err
+	}
+
+	var key pk.Identifier
+	var hasData pk.Boolean
+	for i := 0; i < int(length); i++ {
+		var n1, n2, n3 int64
+
+		n1, err = key.ReadFrom(r)
+		if err != nil {
+			return n + n1, err
+		}
+
+		n2, err = hasData.ReadFrom(r)
+		if err != nil {
+			return n + n1 + n2, err
+		}
+
+		if hasData {
+			// Skip the NBT data
+			var rawData nbt.RawMessage
+			n3, err = pk.NBTField{V: &rawData, AllowUnknownFields: true}.ReadFrom(r)
+			if err != nil {
+				return n + n1 + n2 + n3, err
+			}
+		}
+
+		n += n1 + n2 + n3
+	}
+	return n, nil
 }
 
 type idleTagsDecoder struct{}
