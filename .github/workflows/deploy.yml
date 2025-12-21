@@ -1,0 +1,55 @@
+name: Deploy Go API
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    env:
+      DOCKER_IMAGE_NAME: mc_afk_go
+      DOCKER_CONTAINER_NAME: mc_afk_go
+      REMOTE_USER: ${{ secrets.REMOTE_USER }}
+      REMOTE_HOST: ${{ secrets.REMOTE_HOST }}
+      REMOTE_PORT: ${{ secrets.REMOTE_PORT }}
+      SSH_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+      REMOTE_PATH: /home/ubuntu/mc_afk_go.tar
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image
+        run: docker build -t $DOCKER_IMAGE_NAME .
+
+      - name: Save Docker image as tar
+        run: docker save $DOCKER_IMAGE_NAME -o $DOCKER_IMAGE_NAME.tar
+
+      - name: Setup SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "$SSH_KEY" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -p $REMOTE_PORT $REMOTE_HOST >> ~/.ssh/known_hosts
+
+      - name: Copy Docker image to remote VM
+        run: scp -P $REMOTE_PORT $DOCKER_IMAGE_NAME.tar $REMOTE_USER@$REMOTE_HOST:$REMOTE_PATH
+
+      - name: Load Docker image and run container on remote VM
+        run: |
+          ssh -p $REMOTE_PORT $REMOTE_USER@$REMOTE_HOST "
+            if [ \"\$(sudo docker ps -aq -f name=$DOCKER_CONTAINER_NAME)\" ]; then
+              sudo docker rm -f $DOCKER_CONTAINER_NAME
+            fi
+            if [ \"\$(sudo docker images -q $DOCKER_IMAGE_NAME)\" ]; then
+              sudo docker rmi -f $DOCKER_IMAGE_NAME
+            fi
+            sudo docker load -i $REMOTE_PATH
+            sudo docker run -d --name $DOCKER_CONTAINER_NAME -p 9123:8080 --restart unless-stopped $DOCKER_IMAGE_NAME
+          "
