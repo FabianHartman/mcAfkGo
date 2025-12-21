@@ -1,6 +1,8 @@
 package main
 
 import (
+	"crypto/rand"
+	"encoding/binary"
 	"errors"
 	"log"
 	"os"
@@ -9,6 +11,8 @@ import (
 	"mcAfkGo/bot"
 	"mcAfkGo/bot/basic"
 	"mcAfkGo/chat"
+	"mcAfkGo/data/packetid"
+	pk "mcAfkGo/net/packet"
 )
 
 func getEnv(key, defaultValue string) string {
@@ -39,6 +43,7 @@ func main() {
 		AsTk: accessToken,
 	}
 	player = basic.NewPlayer(client, basic.DefaultSettings, basic.EventsListener{
+		GameStart:  onGameStart,
 		Disconnect: onDisconnect,
 		Death:      onDeath,
 	})
@@ -74,6 +79,42 @@ type DisconnectErr struct {
 
 func (d DisconnectErr) Error() string {
 	return "disconnect: " + d.Reason.ClearString()
+}
+
+func onGameStart() error {
+	log.Println("Bot joined the server, sending greeting message...")
+
+	message := "Hello! I'm an AFK bot."
+	err := sendChatMessage(message)
+	if err != nil {
+		log.Printf("Failed to send chat message: %v", err)
+
+		return err
+	}
+
+	return nil
+}
+
+func sendChatMessage(msg string) error {
+	if len(msg) > 256 {
+		return errors.New("message length greater than 256")
+	}
+
+	var salt int64
+	if err := binary.Read(rand.Reader, binary.BigEndian, &salt); err != nil {
+		return err
+	}
+
+	err := client.Conn.WritePacket(pk.Marshal(
+		packetid.ServerboundChat,
+		pk.String(msg),
+		pk.Long(time.Now().UnixMilli()),
+		pk.Long(salt),
+		pk.Boolean(false),     // has signature
+		pk.VarInt(0),          // offset
+		pk.NewFixedBitSet(20), // acknowledged bit set (20 bits)
+	))
+	return err
 }
 
 func onDisconnect(reason chat.Message) error {
