@@ -6,11 +6,11 @@ import (
 	"net"
 	"strconv"
 
+	"mcAfkGo/auth/user"
 	"mcAfkGo/chat"
 	mcnet "mcAfkGo/net"
 	pk "mcAfkGo/net/packet"
 	"mcAfkGo/net/queue"
-	"mcAfkGo/yggdrasil/user"
 )
 
 const ProtocolVersion = 767
