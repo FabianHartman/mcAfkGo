@@ -18,6 +18,7 @@ jobs:
       SSH_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
       REMOTE_PATH: ${{ secrets.REMOTE_PATH }}
       MS_TOKEN_PATH: ${{ secrets.MS_TOKEN_PATH }}
+      MS_TOKEN_FILE: ${{ secrets.MS_TOKEN_FILE }}
       MC_ADDRESS: ${{ secrets.MC_ADDRESS }}
       MS_CLIENT_ID: ${{ secrets.MS_CLIENT_ID }}
 
@@ -59,7 +60,7 @@ jobs:
               --name $DOCKER_CONTAINER_NAME \
               -e MC_ADDRESS=$MC_ADDRESS \
               -e MS_CLIENT_ID=$MS_CLIENT_ID \
-              -e MS_TOKEN_FILE=/data/.mctoken \
+              -e MS_TOKEN_FILE=$MS_TOKEN_FILE \
               -v $MS_TOKEN_PATH:/data \
               $DOCKER_IMAGE_NAME
           "
