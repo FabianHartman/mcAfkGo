@@ -256,7 +256,7 @@ func loginAuth(auth Auth, shareSecret []byte, er encryptionRequest) error {
 		},
 	)
 	if err != nil {
-		return fmt.Errorf("create request packet to auth faile: %v", err)
+		return fmt.Errorf("create request packet to auth failed: %v", err)
 	}
 
 	PostRequest, err := http.NewRequest(http.MethodPost, "https://sessionserver.mojang.com/session/minecraft/join",
