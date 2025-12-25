@@ -284,7 +284,7 @@ func xstsAuthorize(xblToken string) (string, string, error) {
 	defer func() { _ = resp.Body.Close() }()
 	body, _ := io.ReadAll(resp.Body)
 	if resp.StatusCode != 200 {
-		return "", "", fmt.Errorf("xsts msauth failed: %s", string(body))
+		return "", "", fmt.Errorf("xsts auth failed: %s", string(body))
 	}
 	var obj map[string]interface{}
 	if err := json.Unmarshal(body, &obj); err != nil {
