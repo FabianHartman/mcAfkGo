@@ -6,6 +6,7 @@ import (
 	"os"
 	"time"
 
+	"mcAfkGo/auth"
 	"mcAfkGo/bot"
 	"mcAfkGo/bot/basic"
 	"mcAfkGo/chat"
@@ -20,10 +21,9 @@ func getEnv(key, defaultValue string) string {
 }
 
 var (
-	address     = getEnv("MC_ADDRESS", "127.0.0.1:25565")
-	name        = getEnv("MC_NAME", "AFKBot")
-	playerID    = getEnv("MC_UUID", "")
-	accessToken = getEnv("MC_TOKEN", "")
+	address   = getEnv("MC_ADDRESS", "127.0.0.1:25565")
+	clientID  = getEnv("MS_CLIENT_ID", "")
+	tokenFile = getEnv("MS_TOKEN_FILE", ".mctoken")
 )
 
 var (
@@ -32,6 +32,26 @@ var (
 )
 
 func main() {
+	// Check if client ID is provided
+	if clientID == "" {
+		log.Fatal("MS_CLIENT_ID environment variable must be set. Get one from Azure AD app registration.")
+	}
+
+	// Perform OAuth flow to get Minecraft token and profile
+	log.Println("Starting Microsoft authentication...")
+	accessToken, playerID, name, err := auth.GetMinecraftToken(
+		clientID,
+		"XboxLive.signin offline_access",
+		"consumers",
+		"device",
+		tokenFile,
+	)
+	if err != nil {
+		log.Fatalf("Authentication failed: %v", err)
+	}
+
+	log.Printf("Authenticated as %s (UUID: %s)", name, playerID)
+
 	client = bot.NewClient()
 	client.Auth = bot.Auth{
 		Name: name,
@@ -43,7 +63,7 @@ func main() {
 		Death:      onDeath,
 	})
 
-	err := client.JoinServer(address)
+	err = client.JoinServer(address)
 	if err != nil {
 		log.Fatal(err)
 	}

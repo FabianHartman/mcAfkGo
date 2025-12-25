@@ -256,7 +256,7 @@ func loginAuth(auth Auth, shareSecret []byte, er encryptionRequest) error {
 		},
 	)
 	if err != nil {
-		return fmt.Errorf("create request packet to yggdrasil faile: %v", err)
+		return fmt.Errorf("create request packet to auth faile: %v", err)
 	}
 
 	PostRequest, err := http.NewRequest(http.MethodPost, "https://sessionserver.mojang.com/session/minecraft/join",
@@ -275,7 +275,7 @@ func loginAuth(auth Auth, shareSecret []byte, er encryptionRequest) error {
 
 	body, _ := io.ReadAll(resp.Body)
 	if resp.StatusCode != http.StatusNoContent {
-		return fmt.Errorf("auth fail: %s", string(body))
+		return fmt.Errorf("msauth fail: %s", string(body))
 	}
 	return nil
 }
