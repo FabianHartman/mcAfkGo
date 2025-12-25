@@ -16,11 +16,10 @@ jobs:
       REMOTE_HOST: ${{ secrets.REMOTE_HOST }}
       REMOTE_PORT: ${{ secrets.REMOTE_PORT }}
       SSH_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
-      REMOTE_PATH: /home/ubuntu/mc_afk_go.tar
+      REMOTE_PATH: ${{ secrets.REMOTE_PATH }}
+      MS_TOKEN_PATH: ${{ secrets.MS_TOKEN_PATH }}
       MC_ADDRESS: ${{ secrets.MC_ADDRESS }}
-      MC_NAME: ${{ secrets.MC_NAME }}
-      MC_UUID: ${{ secrets.MC_UUID }}
-      MC_TOKEN: ${{ secrets.MC_TOKEN }}
+      MS_CLIENT_ID: ${{ secrets.MS_CLIENT_ID }}
 
     steps:
       - name: Checkout repo
@@ -54,6 +53,13 @@ jobs:
             if [ \"\$(sudo docker images -q $DOCKER_IMAGE_NAME)\" ]; then
               sudo docker rmi -f $DOCKER_IMAGE_NAME
             fi
+            sudo mkdir -p $MS_TOKEN_PATH
             sudo docker load -i $REMOTE_PATH
-            sudo docker run -e MC_ADDRESS=$MC_ADDRESS -e MC_NAME=$MC_NAME -e MC_UUID=$MC_UUID -e MC_TOKEN=$MC_TOKEN -d --name $DOCKER_CONTAINER_NAME $DOCKER_IMAGE_NAME
+            sudo docker run -d \
+              --name $DOCKER_CONTAINER_NAME \
+              -e MC_ADDRESS=$MC_ADDRESS \
+              -e MS_CLIENT_ID=$MS_CLIENT_ID \
+              -e MS_TOKEN_FILE=/data/.mctoken \
+              -v $MS_TOKEN_PATH:/data \
+              $DOCKER_IMAGE_NAME
           "
