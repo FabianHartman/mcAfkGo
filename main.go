@@ -23,7 +23,7 @@ func getEnv(key, defaultValue string) string {
 var (
 	address   = getEnv("MC_ADDRESS", "127.0.0.1:25565")
 	clientID  = getEnv("MS_CLIENT_ID", "")
-	tokenFile = getEnv("MS_TOKEN_FILE", ".mctoken")
+	tokenFile = getEnv("MS_TOKEN_FILE", "token.mctoken")
 )
 
 var (
@@ -41,9 +41,6 @@ func main() {
 	log.Println("Starting Microsoft authentication...")
 	accessToken, playerID, name, err := auth.GetMinecraftToken(
 		clientID,
-		"XboxLive.signin offline_access",
-		"consumers",
-		"device",
 		tokenFile,
 	)
 	if err != nil {

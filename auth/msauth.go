@@ -34,23 +34,28 @@ type TokenResponse struct {
 	TokenType    string `json:"token_type"`
 }
 
-// StartDeviceAuth starts the Microsoft device code flow for the provided clientID, scope and tenant.
-// It returns an access token string once the user completes the flow.
-func StartDeviceAuth(clientID string, scope string, tenant string) (string, error) {
-	if tenant == "" {
-		tenant = "consumers"
-	}
+// TokenCache stores both Minecraft access token and Microsoft refresh token
+type TokenCache struct {
+	MinecraftAccessToken  string    `json:"minecraft_access_token"`
+	MicrosoftRefreshToken string    `json:"microsoft_refresh_token"`
+	ExpiresAt             time.Time `json:"expires_at"`
+	ProfileID             string    `json:"profile_id"`
+	ProfileName           string    `json:"profile_name"`
+}
 
-	deviceEndpoint := fmt.Sprintf("https://login.microsoftonline.com/%s/oauth2/v2.0/devicecode", tenant)
-	tokenEndpoint := fmt.Sprintf("https://login.microsoftonline.com/%s/oauth2/v2.0/token", tenant)
+// StartDeviceAuth starts the Microsoft device code flow for the provided clientID, scope and tenant.
+// It returns an access token and refresh token once the user completes the flow.
+func StartDeviceAuth(clientID string) (string, string, error) {
+	deviceEndpoint := fmt.Sprintf("https://login.microsoftonline.com/consumers/oauth2/v2.0/devicecode")
+	tokenEndpoint := fmt.Sprintf("https://login.microsoftonline.com/consumers/oauth2/v2.0/token")
 
 	data := url.Values{}
 	data.Set("client_id", clientID)
-	data.Set("scope", scope)
+	data.Set("scope", "XboxLive.signin offline_access")
 
 	resp, err := http.Post(deviceEndpoint, "application/x-www-form-urlencoded", strings.NewReader(data.Encode()))
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 
 	defer func() {
@@ -59,13 +64,13 @@ func StartDeviceAuth(clientID string, scope string, tenant string) (string, erro
 
 	body, _ := io.ReadAll(resp.Body)
 	if resp.StatusCode != 200 {
-		return "", fmt.Errorf("device code request failed: %s", string(body))
+		return "", "", fmt.Errorf("device code request failed: %s", string(body))
 	}
 
 	var dc DeviceCodeResponse
 	err = json.Unmarshal(body, &dc)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 
 	log.Println("To authenticate with Microsoft, follow these steps:")
@@ -86,7 +91,7 @@ func StartDeviceAuth(clientID string, scope string, tenant string) (string, erro
 
 	for {
 		if time.Now().After(expiresAt) {
-			return "", errors.New("device code expired before verification")
+			return "", "", errors.New("device code expired before verification")
 		}
 
 		post := url.Values{}
@@ -96,7 +101,7 @@ func StartDeviceAuth(clientID string, scope string, tenant string) (string, erro
 
 		resp, err := http.Post(tokenEndpoint, "application/x-www-form-urlencoded", strings.NewReader(post.Encode()))
 		if err != nil {
-			return "", err
+			return "", "", err
 		}
 
 		body, _ := io.ReadAll(resp.Body)
@@ -106,10 +111,10 @@ func StartDeviceAuth(clientID string, scope string, tenant string) (string, erro
 			var tr TokenResponse
 			err := json.Unmarshal(body, &tr)
 			if err != nil {
-				return "", err
+				return "", "", err
 			}
 
-			return tr.AccessToken, nil
+			return tr.AccessToken, tr.RefreshToken, nil
 		}
 
 		var errObj map[string]interface{}
@@ -122,44 +127,54 @@ func StartDeviceAuth(clientID string, scope string, tenant string) (string, erro
 			}
 
 			if errStr == "authorization_declined" {
-				return "", errors.New("authorization declined")
+				return "", "", errors.New("authorization declined")
 			}
 
 			if errStr == "expired_token" {
-				return "", errors.New("device code expired")
+				return "", "", errors.New("device code expired")
 			}
 		}
 
-		return "", fmt.Errorf("token request failed: %s", string(body))
+		return "", "", fmt.Errorf("token request failed: %s", string(body))
 	}
 }
 
-// loadTokenFromFile helper: load token from file if present
-func loadTokenFromFile(path string) (string, error) {
+// loadTokenCache loads the token cache from file
+func loadTokenCache(path string) (*TokenCache, error) {
 	if path == "" {
-		return "", nil
+		return nil, errors.New("empty path")
 	}
+
 	b, err := os.ReadFile(path)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	t := strings.TrimSpace(string(b))
-	if t == "" {
-		return "", nil
+
+	var cache TokenCache
+	err = json.Unmarshal(b, &cache)
+	if err != nil {
+		return nil, err
 	}
-	return t, nil
+
+	return &cache, nil
 }
 
-// saveTokenToFile helper: save token to file
-func saveTokenToFile(path string, token string) error {
+// saveTokenCache saves the token cache to file
+func saveTokenCache(path string, cache *TokenCache) error {
 	if path == "" {
 		return nil
 	}
-	// ensure directory exists
-	if dir := filepathDir(path); dir != "" {
+	dir := filepathDir(path)
+	if dir != "" {
 		_ = os.MkdirAll(dir, 0700)
 	}
-	return os.WriteFile(path, []byte(strings.TrimSpace(token)+"\n"), 0600)
+
+	b, err := json.MarshalIndent(cache, "", "  ")
+	if err != nil {
+		return err
+	}
+
+	return os.WriteFile(path, b, 0600)
 }
 
 // small helper for directory extraction (avoid importing path/filepath multiple times)
@@ -175,6 +190,36 @@ func filepathDir(path string) string {
 		}
 	}
 	return ""
+}
+
+// refreshMicrosoftToken uses a refresh token to get a new Microsoft access token
+func refreshMicrosoftToken(clientID, refreshToken string) (string, string, error) {
+	tokenEndpoint := fmt.Sprintf("https://login.microsoftonline.com/consumers/oauth2/v2.0/token")
+
+	post := url.Values{}
+	post.Set("grant_type", "refresh_token")
+	post.Set("client_id", clientID)
+	post.Set("refresh_token", refreshToken)
+	post.Set("scope", "XboxLive.signin offline_access")
+
+	resp, err := http.Post(tokenEndpoint, "application/x-www-form-urlencoded", strings.NewReader(post.Encode()))
+	if err != nil {
+		return "", "", err
+	}
+	defer resp.Body.Close()
+
+	body, _ := io.ReadAll(resp.Body)
+	if resp.StatusCode != 200 {
+		return "", "", fmt.Errorf("refresh token request failed: %s", string(body))
+	}
+
+	var tr TokenResponse
+	err = json.Unmarshal(body, &tr)
+	if err != nil {
+		return "", "", err
+	}
+
+	return tr.AccessToken, tr.RefreshToken, nil
 }
 
 // xboxAuthenticate exchanges a Microsoft access token for an Xbox Live token and returns the XBL token and user hash (uhs).
@@ -349,39 +394,54 @@ func fetchMinecraftProfile(mcToken string) (string, string, error) {
 }
 
 // GetMinecraftToken performs the full OAuth flow to get a Minecraft access token.
-// It can use either device code flow or browser-based msauth code flow.
-// authMode should be "device" or "browser".
 // tokenFile is optional - if provided, the token will be cached to/from this file.
-func GetMinecraftToken(clientID, scope, tenant, authMode, tokenFile string) (mcToken, profileID, profileName string, err error) {
-	if tenant == "" {
-		tenant = "consumers"
-	}
-	if scope == "" {
-		scope = "XboxLive.signin offline_access"
-	}
-	if authMode == "" {
-		authMode = "device"
-	}
-
-	// attempt to load token from file if configured
+func GetMinecraftToken(clientID, tokenFile string) (mcToken, profileID, profileName string, err error) {
+	// attempt to load token cache from file if configured
 	if tokenFile != "" {
-		if t, err := loadTokenFromFile(tokenFile); err == nil && t != "" {
-			log.Println("Loaded Minecraft access token from file")
-			// Verify it works by fetching profile
-			id, name, err := fetchMinecraftProfile(t)
-			if err == nil && id != "" && name != "" {
-				return t, id, name, nil
+		cache, err := loadTokenCache(tokenFile)
+		if err == nil && cache != nil {
+			log.Println("Loaded token cache from file")
+
+			// Check if Minecraft token is still valid
+			if cache.MinecraftAccessToken != "" && time.Now().Before(cache.ExpiresAt) {
+				log.Println("Cached Minecraft token is still valid")
+				// Verify it works by fetching profile
+				id, name, err := fetchMinecraftProfile(cache.MinecraftAccessToken)
+				if err == nil && id != "" && name != "" {
+					log.Println("Using cached Minecraft access token")
+					return cache.MinecraftAccessToken, id, name, nil
+				}
+				log.Println("Cached Minecraft token validation failed")
 			}
-			log.Println("Cached token is invalid, will re-authenticate")
+
+			// Token expired or invalid, try to refresh using Microsoft refresh token
+			if cache.MicrosoftRefreshToken != "" {
+				log.Println("Minecraft token expired, attempting refresh using Microsoft refresh token...")
+				msToken, newRefreshToken, err := refreshMicrosoftToken(clientID, cache.MicrosoftRefreshToken)
+				if err == nil {
+					log.Println("Successfully refreshed Microsoft access token")
+					// Continue with the refreshed token to get new Minecraft token
+					return completeMicrosoftAuth(msToken, newRefreshToken, tokenFile)
+				}
+				log.Printf("Failed to refresh token: %v, will re-authenticate", err)
+			}
+		} else {
+			log.Println("No valid token cache found, will authenticate")
 		}
 	}
 
-	log.Println("Starting Microsoft device msauth...")
-	msToken, err := StartDeviceAuth(clientID, scope, tenant)
+	// No cached token or refresh failed, perform full OAuth flow
+	log.Println("Starting Microsoft device auth...")
+	msToken, msRefreshToken, err := StartDeviceAuth(clientID)
 	if err != nil {
 		return "", "", "", err
 	}
 
+	return completeMicrosoftAuth(msToken, msRefreshToken, tokenFile)
+}
+
+// completeMicrosoftAuth completes the authentication flow from Microsoft token to Minecraft token
+func completeMicrosoftAuth(msToken, msRefreshToken, tokenFile string) (mcToken, profileID, profileName string, err error) {
 	log.Println("Microsoft access token obtained, exchanging for Xbox Live token...")
 	xblToken, uhs, err := xboxAuthenticate(msToken)
 	if err != nil {
@@ -411,15 +471,6 @@ func GetMinecraftToken(clientID, scope, tenant, authMode, tokenFile string) (mcT
 		log.Println("warning: account does not appear to own Minecraft (entitlements empty)")
 	}
 
-	// persist token if file configured
-	if tokenFile != "" {
-		if err := saveTokenToFile(tokenFile, mcToken); err != nil {
-			log.Printf("warning: failed to save token to file: %v", err)
-		} else {
-			log.Println("Saved Minecraft access token to file")
-		}
-	}
-
 	log.Println("Minecraft access token obtained")
 
 	profileID, profileName, err = fetchMinecraftProfile(mcToken)
@@ -428,6 +479,22 @@ func GetMinecraftToken(clientID, scope, tenant, authMode, tokenFile string) (mcT
 	}
 
 	log.Printf("Retrieved Minecraft profile - Name: %q (len=%d), ID: %s", profileName, len(profileName), profileID)
+
+	// persist token cache if file configured
+	if tokenFile != "" {
+		cache := &TokenCache{
+			MinecraftAccessToken:  mcToken,
+			MicrosoftRefreshToken: msRefreshToken,
+			ExpiresAt:             time.Now().Add(6 * time.Hour),
+			ProfileID:             profileID,
+			ProfileName:           profileName,
+		}
+		if err := saveTokenCache(tokenFile, cache); err != nil {
+			log.Printf("warning: failed to save token cache to file: %v", err)
+		} else {
+			log.Println("Saved token cache to file")
+		}
+	}
 
 	return mcToken, profileID, profileName, nil
 }
