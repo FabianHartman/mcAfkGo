@@ -194,7 +194,7 @@ func filepathDir(path string) string {
 
 // refreshMicrosoftToken uses a refresh token to get a new Microsoft access token
 func refreshMicrosoftToken(clientID, refreshToken string) (string, string, error) {
-	tokenEndpoint := fmt.Sprintf("https://login.microsoftonline.com/consumers/oauth2/v2.0/token")
+	tokenEndpoint := "https://login.microsoftonline.com/consumers/oauth2/v2.0/token"
 
 	post := url.Values{}
 	post.Set("grant_type", "refresh_token")
