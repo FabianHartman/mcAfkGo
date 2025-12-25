@@ -9,6 +9,14 @@ jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
 
+    # Required secrets:
+    # - REMOTE_USER, REMOTE_HOST, REMOTE_PORT: SSH connection details
+    # - SSH_PRIVATE_KEY: SSH key for authentication
+    # - REMOTE_PATH: Path on remote host for Docker image tar file
+    # - MS_TOKEN_PATH: Path on remote host to mount as /data in container (for token persistence)
+    # - MS_TOKEN_FILE: Path inside container where token should be stored (e.g., /data/.mctoken)
+    # - MC_ADDRESS: Minecraft server address (e.g., 127.0.0.1:25565)
+    # - MS_CLIENT_ID: Microsoft Azure AD application client ID for OAuth
     env:
       DOCKER_IMAGE_NAME: mc_afk_go
       DOCKER_CONTAINER_NAME: mc_afk_go
@@ -18,6 +26,7 @@ jobs:
       SSH_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
       REMOTE_PATH: ${{ secrets.REMOTE_PATH }}
       MS_TOKEN_PATH: ${{ secrets.MS_TOKEN_PATH }}
+      MS_TOKEN_FILE: ${{ secrets.MS_TOKEN_FILE }}
       MC_ADDRESS: ${{ secrets.MC_ADDRESS }}
       MS_CLIENT_ID: ${{ secrets.MS_CLIENT_ID }}
 
@@ -59,7 +68,7 @@ jobs:
               --name $DOCKER_CONTAINER_NAME \
               -e MC_ADDRESS=$MC_ADDRESS \
               -e MS_CLIENT_ID=$MS_CLIENT_ID \
-              -e MS_TOKEN_FILE=/data/.mctoken \
+              -e MS_TOKEN_FILE=$MS_TOKEN_FILE \
               -v $MS_TOKEN_PATH:/data \
               $DOCKER_IMAGE_NAME
           "
