@@ -46,8 +46,8 @@ type TokenCache struct {
 // StartDeviceAuth starts the Microsoft device code flow for the provided clientID, scope and tenant.
 // It returns an access token and refresh token once the user completes the flow.
 func StartDeviceAuth(clientID string) (string, string, error) {
-	deviceEndpoint := fmt.Sprintf("https://login.microsoftonline.com/consumers/oauth2/v2.0/devicecode")
-	tokenEndpoint := fmt.Sprintf("https://login.microsoftonline.com/consumers/oauth2/v2.0/token")
+	deviceEndpoint := "https://login.microsoftonline.com/consumers/oauth2/v2.0/devicecode"
+	tokenEndpoint := "https://login.microsoftonline.com/consumers/oauth2/v2.0/token"
 
 	data := url.Values{}
 	data.Set("client_id", clientID)
