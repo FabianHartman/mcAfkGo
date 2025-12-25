@@ -9,14 +9,6 @@ jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
 
-    # Required secrets:
-    # - REMOTE_USER, REMOTE_HOST, REMOTE_PORT: SSH connection details
-    # - SSH_PRIVATE_KEY: SSH key for authentication
-    # - REMOTE_PATH: Path on remote host for Docker image tar file
-    # - MS_TOKEN_PATH: Path on remote host to mount as /data in container (for token persistence)
-    # - MS_TOKEN_FILE: Path inside container where token should be stored (e.g., /data/.mctoken)
-    # - MC_ADDRESS: Minecraft server address (e.g., 127.0.0.1:25565)
-    # - MS_CLIENT_ID: Microsoft Azure AD application client ID for OAuth
     env:
       DOCKER_IMAGE_NAME: mc_afk_go
       DOCKER_CONTAINER_NAME: mc_afk_go
