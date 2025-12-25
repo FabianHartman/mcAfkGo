@@ -43,8 +43,8 @@ type TokenCache struct {
 	ProfileName           string    `json:"profile_name"`
 }
 
-// StartDeviceAuth starts the Microsoft device code flow for the provided clientID, scope and tenant.
-// It returns an access token and refresh token once the user completes the flow.
+// StartDeviceAuth starts the Microsoft device code flow for the provided clientID, using the
+// default consumer tenant and a fixed Xbox Live scope.
 func StartDeviceAuth(clientID string) (string, string, error) {
 	deviceEndpoint := "https://login.microsoftonline.com/consumers/oauth2/v2.0/devicecode"
 	tokenEndpoint := "https://login.microsoftonline.com/consumers/oauth2/v2.0/token"
