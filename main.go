@@ -51,6 +51,15 @@ func startBot(startGameLoop bool) error {
 		Death:      onDeath,
 	})
 
+	if isPlayerOnline(address, name) {
+		err = onDisconnect(chat.Message{
+			Text: "Player is already online",
+		})
+		if err != nil {
+			return err
+		}
+	}
+
 	err = client.JoinServer(address)
 	if err != nil {
 		return err
