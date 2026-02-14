@@ -1,4 +1,3 @@
-// Package CFB8 implements CFB8 block cipher mode of operation used by Minecraft protocol.
 package CFB8
 
 import (
