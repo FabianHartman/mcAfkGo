@@ -1,4 +1,4 @@
-name: Deploy Go API
+name: Deploy AFK bot
 
 on:
   push:
