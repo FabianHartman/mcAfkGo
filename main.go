@@ -108,7 +108,7 @@ func startBot(startGameLoop bool) error {
 
 func startAPI() {
 	go func() {
-		http.HandleFunc("/api/online-players", func(w http.ResponseWriter, r *http.Request) {
+		http.HandleFunc("/online-players", func(w http.ResponseWriter, r *http.Request) {
 			players, err := GetOnlinePlayers(address)
 			if err != nil {
 				w.WriteHeader(http.StatusInternalServerError)
