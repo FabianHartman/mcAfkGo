@@ -112,9 +112,9 @@ func startAPI() {
 			players, err := GetOnlinePlayers(address)
 			if err != nil {
 				w.WriteHeader(http.StatusInternalServerError)
-				_, err = w.Write([]byte(`{"error": "Failed to get online players"}`))
-				if err != nil {
-					log.Println("Failed to write error response:", err)
+				_, responseWriteErr := w.Write([]byte(`{"error": "Failed to get online players"}`))
+				if responseWriteErr != nil {
+					log.Println("Failed to write error response:", responseWriteErr)
 				}
 
 				log.Println("Failed to get online players:", err)
