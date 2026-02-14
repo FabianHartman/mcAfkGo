@@ -2,7 +2,8 @@ package main
 
 import (
 	"encoding/json"
-	"errors"
+	stdErrors "errors"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -11,7 +12,6 @@ import (
 	"mcAfkGo/auth"
 	"mcAfkGo/bot"
 	"mcAfkGo/bot/basic"
-	"mcAfkGo/chat"
 )
 
 func getEnv(key, defaultValue string) string {
@@ -47,16 +47,19 @@ func startBot(startGameLoop bool) error {
 	}
 
 	player = basic.NewPlayer(client, basic.DefaultSettings, basic.EventsListener{
-		Disconnect: onDisconnect,
-		Death:      onDeath,
+		Death: onDeath,
 	})
 
 	if isPlayerOnline(address, name) {
-		err = onDisconnect(chat.Message{
-			Text: "Player is already online",
-		})
-		if err != nil {
-			return err
+		log.Println("Player is already online, bot will wait till player leaves.")
+
+		for {
+			time.Sleep(time.Minute)
+			if !isPlayerOnline(address, name) {
+				log.Println("Player is now offline, bot will join.")
+
+				break
+			}
 		}
 	}
 
@@ -65,27 +68,39 @@ func startBot(startGameLoop bool) error {
 		return err
 	}
 
+	log.Println("Joined server")
+
 	if startGameLoop {
-		go func() {
-			for {
-				err := client.HandleGame()
-				if err == nil {
-					panic("HandleGame never return nil")
-				}
-
-				if err2 := new(bot.PacketHandlerError); errors.As(err, err2) {
-					if err := new(DisconnectErr); errors.As(err2, err) {
-						log.Print("Disconnect, reason: ", err.Reason)
-
-						return
-					} else {
-						log.Print(err2)
-					}
-				} else {
-					log.Fatal(err)
-				}
+		for {
+			err := client.HandleGame()
+			if err == nil {
+				panic("HandleGame never return nil")
 			}
-		}()
+
+			if stdErrors.Is(err, io.EOF) {
+				log.Println("Bot disconnected (EOF or disconnect). This usually means the account was logged in elsewhere or kicked.")
+				for {
+					time.Sleep(time.Minute)
+					if !isPlayerOnline(address, client.Auth.Name) {
+						log.Println("Player is offline, attempting to reconnect...")
+						err := startBot(false)
+						if err != nil {
+							log.Printf("Reconnect failed: %v", err)
+						} else {
+							log.Println("Reconnected successfully!")
+							break
+						}
+					}
+				}
+				continue
+			}
+
+			if err2 := new(bot.PacketHandlerError); stdErrors.As(err, err2) {
+				log.Print(err2)
+			} else {
+				log.Fatalf("Unexpected error: %v", err)
+			}
+		}
 	}
 
 	return nil
@@ -132,48 +147,6 @@ func main() {
 	}
 
 	log.Println("Login success")
-
-	select {} // block forever, game loop is in goroutine
-}
-
-type DisconnectErr struct {
-	Reason chat.Message
-}
-
-func (d DisconnectErr) Error() string {
-	return "disconnect: " + d.Reason.ClearString()
-}
-
-var reconnecting = false
-
-func onDisconnect(reason chat.Message) error {
-	go func() {
-		if reconnecting {
-			return
-		}
-
-		reconnecting = true
-
-		defer func() { reconnecting = false }()
-
-		for {
-			time.Sleep(time.Minute)
-
-			isOnline := isPlayerOnline(address, client.Auth.Name)
-			if !isOnline {
-				log.Println("Player is offline, attempting to reconnect...")
-				err := startBot(true)
-				if err != nil {
-					log.Printf("Reconnect failed: %v", err)
-				} else {
-					log.Println("Reconnected successfully!")
-					return
-				}
-			}
-		}
-	}()
-
-	return DisconnectErr{Reason: reason}
 }
 
 func onDeath() error {
