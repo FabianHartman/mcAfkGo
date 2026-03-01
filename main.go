@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	stdErrors "errors"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -50,12 +51,25 @@ func startBot(startGameLoop bool) error {
 		Death: onDeath,
 	})
 
-	if isPlayerOnline(address, name) {
-		log.Println("Player is already online, bot will wait till player leaves.")
+	playerIsOnline, err := isPlayerOnline(address, name)
+	if err != nil {
+		fmt.Printf("failed to check if player is online: %v\n", err)
+		fmt.Println("Bot will try again in a minute")
+	}
 
+	if playerIsOnline {
+		log.Println("Player is already online, bot will wait till player leaves.")
+	}
+
+	if playerIsOnline || err != nil {
 		for {
 			time.Sleep(time.Minute)
-			if !isPlayerOnline(address, name) {
+
+			playerIsOnline, err = isPlayerOnline(address, name)
+			if err != nil {
+				fmt.Printf("failed to check if player is online: %v\n", err)
+				fmt.Println("Bot will try again in a minute")
+			} else if !playerIsOnline {
 				log.Println("Player is now offline, bot will join.")
 
 				break
@@ -81,7 +95,12 @@ func startBot(startGameLoop bool) error {
 				log.Println("Bot disconnected (EOF or disconnect). This usually means the account was logged in elsewhere or kicked.")
 				for {
 					time.Sleep(time.Minute)
-					if !isPlayerOnline(address, client.Auth.Name) {
+
+					playerIsOnline, err := isPlayerOnline(address, client.Auth.Name)
+					if err != nil {
+						fmt.Printf("failed to check if player is online: %v\n", err)
+						fmt.Println("Bot will try again in a minute")
+					} else if !playerIsOnline {
 						log.Println("Player is offline, attempting to reconnect...")
 						err := startBot(false)
 						if err != nil {
@@ -92,6 +111,7 @@ func startBot(startGameLoop bool) error {
 						}
 					}
 				}
+
 				continue
 			}
 
@@ -163,17 +183,17 @@ func onDeath() error {
 	return nil
 }
 
-func isPlayerOnline(address, playerName string) bool {
+func isPlayerOnline(address, playerName string) (bool, error) {
 	players, err := GetOnlinePlayers(address)
 	if err != nil {
-		return false
+		return false, fmt.Errorf("failed to get online players: %w", err)
 	}
 
 	for _, n := range players {
 		if n == playerName {
-			return true
+			return true, nil
 		}
 	}
 
-	return false
+	return false, nil
 }
