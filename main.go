@@ -1,15 +1,14 @@
 package main
 
 import (
-	"encoding/json"
 	stdErrors "errors"
 	"fmt"
 	"io"
 	"log"
-	"net/http"
 	"os"
 	"time"
 
+	"mcAfkGo/api"
 	"mcAfkGo/auth"
 	"mcAfkGo/bot"
 	"mcAfkGo/bot/basic"
@@ -126,39 +125,12 @@ func startBot(startGameLoop bool) error {
 	return nil
 }
 
-func startAPI() {
-	go func() {
-		http.HandleFunc("/online-players", func(w http.ResponseWriter, r *http.Request) {
-			players, err := GetOnlinePlayers(address)
-			if err != nil {
-				w.WriteHeader(http.StatusInternalServerError)
-				_, responseWriteErr := w.Write([]byte(`{"error": "Failed to get online players"}`))
-				if responseWriteErr != nil {
-					log.Println("Failed to write error response:", responseWriteErr)
-				}
-
-				log.Println("Failed to get online players:", err)
-				return
-			}
-
-			w.Header().Set("Content-Type", "application/json")
-			err = json.NewEncoder(w).Encode(players)
-			if err != nil {
-				log.Println("Failed to encode online players:", err)
-			}
-		})
-
-		log.Println("API server listening on :8080")
-		log.Fatal(http.ListenAndServe(":8080", nil))
-	}()
-}
-
 func main() {
 	if clientID == "" {
 		log.Fatal("MS_CLIENT_ID environment variable must be set. Get one from Azure AD app registration.")
 	}
 
-	startAPI()
+	api.StartAPI(address, GetOnlinePlayers)
 
 	log.Println("Starting Microsoft authentication and bot...")
 	err := startBot(true)
