@@ -45,7 +45,7 @@ var indexTmpl = template.Must(template.New("index").Parse(`<!doctype html>
 
     .collapsible{display:block;margin-top:12px;background:transparent;border:none;color:var(--accent);text-decoration:underline;cursor:pointer;padding:0}
 
-    .lastseen-wrap{display:none;margin-top:12px;padding:12px;border-left:4px solid rgba(255,255,255,0.02);}    
+    .lastseen-wrap{display:block;margin-top:12px;padding:12px;border-left:4px solid rgba(255,255,255,0.02);}    
     .lastseen-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px}
     .lastseen-item{padding:10px;border-radius:6px;background:linear-gradient(180deg,#101010,#0b0b0b);border:2px solid rgba(255,255,255,0.03)}
 
@@ -63,7 +63,6 @@ var indexTmpl = template.Must(template.New("index").Parse(`<!doctype html>
       </div>
       <div class="controls">
         <button id="refresh" class="btn">Refresh</button>
-        <button id="toggleLastSeen" class="btn ghost">Show last seen for offline players</button>
       </div>
     </header>
 
@@ -77,7 +76,7 @@ var indexTmpl = template.Must(template.New("index").Parse(`<!doctype html>
     <section class="section">
       <div id="lastseen" class="lastseen-wrap">
         <h3 style="margin-top:0;color:var(--muted)">Offline players (last seen)</h3>
-        <div id="offline-list" class="lastseen-list">Click "Show last seen" to load data</div>
+        <div id="offline-list" class="lastseen-list">Loading...</div>
       </div>
     </section>
   </div>
@@ -99,18 +98,29 @@ var indexTmpl = template.Must(template.New("index").Parse(`<!doctype html>
     }
 
     let onlinePlayers = [];
-    let lastSeenLoaded = false;
 
     async function fetchOnline(){
-      const res = await fetch('/online-players');
-      if (!res.ok){
-        renderOnlineError();
-        return;
-      }
+      try {
+        const [onlineRes, lastSeenRes] = await Promise.all([fetch('/online-players'), fetch('/last-seen')]);
 
-      const players = await res.json();
-      onlinePlayers = players || [];
-      renderOnline();
+        if (!onlineRes.ok) {
+          renderOnlineError();
+        } else {
+          const players = await onlineRes.json();
+          onlinePlayers = players || [];
+          renderOnline();
+        }
+
+        if (!lastSeenRes.ok) {
+          document.getElementById('offline-list').textContent = 'Failed to load last-seen data';
+        } else {
+          const data = await lastSeenRes.json();
+          renderOffline(data);
+        }
+      } catch (e) {
+        renderOnlineError();
+        document.getElementById('offline-list').textContent = 'Failed to load last-seen data';
+      }
     }
 
     function renderOnline(){
@@ -145,20 +155,6 @@ var indexTmpl = template.Must(template.New("index").Parse(`<!doctype html>
       t.className = 'tile offline-tile';
       t.textContent = 'Failed to load online players';
       c.appendChild(t);
-    }
-
-    async function loadLastSeenIfNeeded(){
-      const wrap = document.getElementById('lastseen');
-      if (wrap.style.display !== 'none' && !lastSeenLoaded){
-        const res = await fetch('/last-seen');
-        if (!res.ok){
-          document.getElementById('offline-list').textContent = 'Failed to load last-seen data';
-          return;
-        }
-        const data = await res.json();
-        renderOffline(data);
-        lastSeenLoaded = true;
-      }
     }
 
     function renderOffline(data){
@@ -198,22 +194,8 @@ var indexTmpl = template.Must(template.New("index").Parse(`<!doctype html>
     }
 
     document.getElementById('refresh').addEventListener('click', async ()=>{
-      lastSeenLoaded = false;
-      document.getElementById('offline-list').textContent = 'Click "Show last seen" to load data';
+      document.getElementById('offline-list').textContent = 'Loading...';
       await fetchOnline();
-    });
-
-    document.getElementById('toggleLastSeen').addEventListener('click', async ()=>{
-      const wrap = document.getElementById('lastseen');
-      const btn = document.getElementById('toggleLastSeen');
-      if (wrap.style.display === '' || wrap.style.display === 'none'){
-        wrap.style.display = 'block';
-        btn.textContent = 'Hide last seen for offline players';
-        await loadLastSeenIfNeeded();
-      } else {
-        wrap.style.display = 'none';
-        btn.textContent = 'Show last seen for offline players';
-      }
     });
 
     fetchOnline();
