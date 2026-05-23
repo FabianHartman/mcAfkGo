@@ -4,20 +4,20 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"time"
 )
 
-// StartAPI starts the HTTP API server on :8080.
-func StartAPI(address string, getPlayers func(string) ([]string, error)) {
+func StartAPI(address string, getPlayers func(string) ([]string, error), getLastSeen func() map[string]time.Time) {
 	go func() {
 		http.HandleFunc("/online-players", onlinePlayersHandler(address, getPlayers))
 		http.HandleFunc("/online-players/v2", onlinePlayersV2Handler(address, getPlayers))
+		http.HandleFunc("/players/last-seen", lastSeenHandler(getLastSeen))
 
 		log.Println("API server listening on :8080")
 		log.Fatal(http.ListenAndServe(":8080", nil))
 	}()
 }
 
-// onlinePlayersHandler returns an http.HandlerFunc that writes the players slice as JSON.
 func onlinePlayersHandler(address string, getPlayers func(string) ([]string, error)) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		players, err := getPlayers(address)
@@ -39,7 +39,6 @@ func onlinePlayersHandler(address string, getPlayers func(string) ([]string, err
 	}
 }
 
-// onlinePlayersV2Handler returns an http.HandlerFunc that writes the players wrapped in an object {"players": [...] }.
 func onlinePlayersV2Handler(address string, getPlayers func(string) ([]string, error)) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		players, err := getPlayers(address)
@@ -61,6 +60,22 @@ func onlinePlayersV2Handler(address string, getPlayers func(string) ([]string, e
 
 		if err := json.NewEncoder(w).Encode(resp); err != nil {
 			log.Println("Failed to encode online players v2:", err)
+		}
+	}
+}
+
+func lastSeenHandler(getLastSeen func() map[string]time.Time) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		snapshot := getLastSeen()
+
+		out := make(map[string]string, len(snapshot))
+		for k, v := range snapshot {
+			out[k] = v.Format(time.RFC3339)
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode(out); err != nil {
+			log.Println("Failed to encode last-seen:", err)
 		}
 	}
 }

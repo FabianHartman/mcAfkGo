@@ -130,7 +130,9 @@ func main() {
 		log.Fatal("MS_CLIENT_ID environment variable must be set. Get one from Azure AD app registration.")
 	}
 
-	api.StartAPI(address, GetOnlinePlayers)
+	StartLastSeenPoller(address)
+
+	api.StartAPI(address, GetOnlinePlayers, GetLastSeen)
 
 	log.Println("Starting Microsoft authentication and bot...")
 	err := startBot(true)
