@@ -28,6 +28,8 @@ func (p *Property) ReadFrom(r io.Reader) (n int64, err error) {
 		(*pk.String)(&p.Value),
 		&signature,
 	}.ReadFrom(r)
+
 	p.Signature = string(signature.Val)
+
 	return
 }

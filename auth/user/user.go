@@ -26,10 +26,12 @@ func (k KeyPairResp) WriteTo(w io.Writer) (int64, error) {
 	if block == nil {
 		return 0, errors.New("pem decode error: no data is found")
 	}
+
 	signature, err := base64.StdEncoding.DecodeString(k.PublicKeySignatureV2)
 	if err != nil {
 		return 0, err
 	}
+
 	return pk.Tuple{
 		pk.Long(k.ExpiresAt.UnixMilli()),
 		pk.ByteArray(block.Bytes),

@@ -21,6 +21,7 @@ func (p PublicKey) WriteTo(w io.Writer) (n int64, err error) {
 	if err != nil {
 		return 0, err
 	}
+
 	return pk.Tuple{
 		pk.Long(p.ExpiresAt.UnixMilli()),
 		pk.ByteArray(pubKeyEncoded),
@@ -34,6 +35,7 @@ func (p *PublicKey) ReadFrom(r io.Reader) (n int64, err error) {
 		PubKey    pk.ByteArray
 		Signature pk.ByteArray
 	)
+
 	n, err = pk.Tuple{
 		&ExpiresAt,
 		&PubKey,
@@ -42,17 +44,21 @@ func (p *PublicKey) ReadFrom(r io.Reader) (n int64, err error) {
 	if err != nil {
 		return n, err
 	}
+
 	p.ExpiresAt = time.UnixMilli(int64(ExpiresAt))
 	pubKey, err := x509.ParsePKIXPublicKey(PubKey)
 	if err != nil {
 		return n, err
 	}
-	if key, ok := pubKey.(*rsa.PublicKey); !ok {
+
+	key, ok := pubKey.(*rsa.PublicKey)
+	if !ok {
 		return n, errors.New("expect RSA public key")
 	} else {
 		p.PubKey = key
 	}
 
 	p.Signature = Signature
+
 	return n, nil
 }

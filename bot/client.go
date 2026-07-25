@@ -63,27 +63,37 @@ func warpConn(c *net.Conn, qr, qw queue.Queue[pk.Packet]) *Conn {
 		pool: sync.Pool{New: func() any { return []byte{} }},
 		rerr: nil,
 	}
+
 	go func() {
 		for {
 			p := pk.Packet{Data: wc.pool.Get().([]byte)}
-			if err := c.ReadPacket(&p); err != nil {
+			err := c.ReadPacket(&p)
+			if err != nil {
 				wc.rerr = err
+
 				break
 			}
-			if ok := wc.recv.Push(p); !ok {
+
+			ok := wc.recv.Push(p)
+			if !ok {
 				wc.rerr = errors.New("receive queue is full")
+
 				break
 			}
 		}
+
 		wc.recv.Close()
 	}()
+
 	go func() {
 		for {
 			p, ok := wc.send.Pull()
 			if !ok {
 				break
 			}
-			if err := c.WritePacket(p); err != nil {
+
+			err := c.WritePacket(p)
+			if err != nil {
 				break
 			}
 		}
@@ -97,7 +107,9 @@ func (c *Conn) ReadPacket(p *pk.Packet) error {
 	if !ok {
 		return c.rerr
 	}
+
 	*p = packet
+
 	return nil
 }
 
@@ -106,10 +118,12 @@ func (c *Conn) WritePacket(p pk.Packet) error {
 	if !ok {
 		return errors.New("queue is full")
 	}
+
 	return nil
 }
 
 func (c *Conn) Close() error {
 	c.send.Close()
+
 	return c.Conn.Close()
 }

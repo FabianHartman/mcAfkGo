@@ -17,6 +17,7 @@ func (e EventsListener) attach(p *Player) {
 	if e.GameStart != nil {
 		attachJoinGameHandler(p.c, e.GameStart)
 	}
+
 	if e.Disconnect != nil {
 		attachDisconnect(p.c, e.Disconnect)
 	}
@@ -39,7 +40,8 @@ func attachDisconnect(c *bot.Client, handler func(reason chat.Message) error) {
 			if err := p.Scan(&reason); err != nil {
 				return Error{err}
 			}
-			return handler(chat.Message(reason))
+
+			return handler(reason)
 		},
 	})
 }

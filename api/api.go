@@ -10,7 +10,6 @@ import (
 	"mcAfkGo/frontend"
 )
 
-// StartAPI starts the HTTP API server on :8080.
 func StartAPI(address string, getPlayers func(string) ([]string, error), getLastSeen func() map[string]time.Time) {
 	go func() {
 		http.HandleFunc("/", frontend.IndexHandler())
@@ -34,14 +33,15 @@ func onlinePlayersHandler(address string, getPlayers func(string) ([]string, err
 			}
 
 			log.Println("Failed to get online players:", err)
+
 			return
 		}
 
-		// Sort players alphabetically so the API always returns a stable order
 		sort.Strings(players)
 
 		w.Header().Set("Content-Type", "application/json")
-		if err := json.NewEncoder(w).Encode(players); err != nil {
+		err = json.NewEncoder(w).Encode(players)
+		if err != nil {
 			log.Println("Failed to encode online players:", err)
 		}
 	}
@@ -58,10 +58,10 @@ func onlinePlayersV2Handler(address string, getPlayers func(string) ([]string, e
 			}
 
 			log.Println("Failed to get online players:", err)
+
 			return
 		}
 
-		// Sort players alphabetically for stable ordering
 		sort.Strings(players)
 
 		w.Header().Set("Content-Type", "application/json")
@@ -69,7 +69,8 @@ func onlinePlayersV2Handler(address string, getPlayers func(string) ([]string, e
 			Players []string `json:"players"`
 		}{Players: players}
 
-		if err := json.NewEncoder(w).Encode(resp); err != nil {
+		err = json.NewEncoder(w).Encode(resp)
+		if err != nil {
 			log.Println("Failed to encode online players v2:", err)
 		}
 	}
@@ -92,7 +93,8 @@ func lastSeenHandler(getLastSeen func() map[string]time.Time) http.HandlerFunc {
 		sort.Slice(items, func(i, j int) bool { return items[i].Name < items[j].Name })
 
 		w.Header().Set("Content-Type", "application/json")
-		if err := json.NewEncoder(w).Encode(items); err != nil {
+		err := json.NewEncoder(w).Encode(items)
+		if err != nil {
 			log.Println("Failed to encode last-seen:", err)
 		}
 	}

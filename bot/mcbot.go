@@ -35,15 +35,19 @@ func (c *Client) JoinServerWithOptions(addr string, options JoinOptions) (err er
 	if options.MCDialer == nil {
 		options.MCDialer = &mcnet.DefaultDialer
 	}
+
 	if options.Context == nil {
 		options.Context = context.Background()
 	}
+
 	if options.QueueRead == nil {
 		options.QueueRead = queue.NewLinkedQueue[pk.Packet]()
 	}
+
 	if options.QueueWrite == nil {
 		options.QueueWrite = queue.NewLinkedQueue[pk.Packet]()
 	}
+
 	return c.join(addr, options)
 }
 
@@ -75,20 +79,22 @@ func (c *Client) join(addr string, options JoinOptions) error {
 
 	err = conn.WritePacket(pk.Marshal(
 		Handshake,
-		pk.VarInt(ProtocolVersion), // Protocol version
-		pk.String(host),            // Host
-		pk.UnsignedShort(port),     // Port
+		pk.VarInt(ProtocolVersion),
+		pk.String(host),
+		pk.UnsignedShort(port),
 		pk.VarInt(2),
 	))
 	if err != nil {
 		return LoginErr{"handshake", err}
 	}
 
-	if err := c.joinLogin(conn); err != nil {
+	err = c.joinLogin(conn)
+	if err != nil {
 		return err
 	}
 
-	if err := c.joinConfiguration(conn); err != nil {
+	err = c.joinConfiguration(conn)
+	if err != nil {
 		return err
 	}
 

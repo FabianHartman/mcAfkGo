@@ -9,21 +9,22 @@ import (
 )
 
 type Events struct {
-	generic  []PacketHandler   // for every packet
-	handlers [][]PacketHandler // for specific packet id only
+	generic  []PacketHandler   `desc:"for every packet"`
+	handlers [][]PacketHandler `desc:"for specific packet id only"`
 }
 
 func (e *Events) AddListener(listeners ...PacketHandler) {
-	for _, l := range listeners {
-		// panic if l.ID is invalid
-		if l.ID < 0 || int(l.ID) >= len(e.handlers) {
-			panic("Invalid packet ID (" + strconv.Itoa(int(l.ID)) + ")")
+	for _, listener := range listeners {
+		if listener.ID < 0 || int(listener.ID) >= len(e.handlers) {
+			panic("Invalid packet ID (" + strconv.Itoa(int(listener.ID)) + ")")
 		}
-		if s := e.handlers[l.ID]; s == nil {
-			e.handlers[l.ID] = []PacketHandler{l}
+
+		s := e.handlers[listener.ID]
+		if s == nil {
+			e.handlers[listener.ID] = []PacketHandler{listener}
 		} else {
-			e.handlers[l.ID] = append(s, l)
-			sortPacketHandlers(e.handlers[l.ID])
+			e.handlers[listener.ID] = append(s, listener)
+			sortPacketHandlers(e.handlers[listener.ID])
 		}
 	}
 }

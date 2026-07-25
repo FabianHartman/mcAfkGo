@@ -11,7 +11,7 @@ const keepAliveDuration = time.Second * 20
 
 func (p *Player) resetKeepAliveDeadline() {
 	newDeadline := time.Now().Add(keepAliveDuration)
-	p.c.Conn.Socket.SetDeadline(newDeadline)
+	_ = p.c.Conn.Socket.SetDeadline(newDeadline)
 }
 
 func (p *Player) handleKeepAlivePacket(packet pk.Packet) error {
@@ -29,5 +29,6 @@ func (p *Player) handleKeepAlivePacket(packet pk.Packet) error {
 	if err != nil {
 		return Error{err}
 	}
+
 	return nil
 }

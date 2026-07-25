@@ -9,35 +9,42 @@ import (
 
 func packVarInt(val int) []byte {
 	var result []byte
+
 	for {
 		temp := byte(val & 0x7F)
 		val >>= 7
 		if val != 0 {
 			temp |= 0x80
 		}
+
 		result = append(result, temp)
 		if val == 0 {
 			break
 		}
 	}
+
 	return result
 }
 
 func readVarIntConn(conn net.Conn) (int, error) {
 	var num int
 	var shift uint
+
 	for {
 		b := make([]byte, 1)
 		_, err := conn.Read(b)
 		if err != nil {
 			return 0, err
 		}
+
 		num |= int(b[0]&0x7F) << shift
 		if b[0]&0x80 == 0 {
 			break
 		}
+
 		shift += 7
 	}
+
 	return num, nil
 }
 
@@ -120,7 +127,9 @@ func GetOnlinePlayers(address string) ([]string, error) {
 
 	var names []string
 	for _, p := range status.Players.Sample {
-		names = append(names, p.Name)
+		if p.Name != "Anonymous Player" {
+			names = append(names, p.Name)
+		}
 	}
 
 	return names, nil

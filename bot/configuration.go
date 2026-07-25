@@ -27,7 +27,7 @@ type ResourcePack struct {
 	URL           string
 	Hash          string
 	Forced        bool
-	PromptMessage *chat.Message // Optional
+	PromptMessage *chat.Message
 }
 
 type ConfigErr struct {
@@ -57,12 +57,13 @@ func (c *Client) joinConfiguration(conn *net.Conn) error {
 			if err != nil {
 				return ConfigErr{"cookie request", err}
 			}
+
 			cookieContent := c.Cookies[string(key)]
 			err = conn.WritePacket(pk.Marshal(
 				packetid.ServerboundConfigCookieResponse,
 				key, pk.OptionEncoder[pk.ByteArray]{
 					Has: cookieContent != nil,
-					Val: pk.ByteArray(cookieContent),
+					Val: cookieContent,
 				},
 			))
 			if err != nil {
@@ -84,6 +85,7 @@ func (c *Client) joinConfiguration(conn *net.Conn) error {
 			if err != nil {
 				return ConfigErr{ErrStage, err}
 			}
+
 			return ConfigErr{ErrStage, DisconnectErr(reason)}
 
 		case packetid.ClientboundConfigFinishConfiguration:
@@ -93,6 +95,7 @@ func (c *Client) joinConfiguration(conn *net.Conn) error {
 			if err != nil {
 				return ConfigErr{"finish config", err}
 			}
+
 			return nil
 
 		case packetid.ClientboundConfigKeepAlive:
@@ -102,7 +105,7 @@ func (c *Client) joinConfiguration(conn *net.Conn) error {
 			if err != nil {
 				return ConfigErr{ErrStage, err}
 			}
-			// send it back
+
 			err = conn.WritePacket(pk.Marshal(
 				packetid.ServerboundConfigKeepAlive,
 				keepAliveID,
@@ -117,7 +120,7 @@ func (c *Client) joinConfiguration(conn *net.Conn) error {
 			if err != nil {
 				return ConfigErr{"ping", err}
 			}
-			// send it back
+
 			err = conn.WritePacket(pk.Marshal(
 				packetid.ServerboundConfigPong,
 				pingID,
@@ -138,11 +141,11 @@ func (c *Client) joinConfiguration(conn *net.Conn) error {
 
 			registry := c.Registries.Registry(string(registryID))
 			if registry == nil {
-				// Skip unknown registries - we don't need them
 				_, err = idleRegistryDecoder{}.ReadFrom(r)
 				if err != nil {
 					return ConfigErr{ErrStage, fmt.Errorf("failed to skip registry %s: %w", registryID, err)}
 				}
+
 				continue
 			}
 
@@ -179,9 +182,11 @@ func (c *Client) joinConfiguration(conn *net.Conn) error {
 				Hash:   string(Hash),
 				Forced: bool(Forced),
 			}
+
 			if PromptMessage.Has {
 				res.PromptMessage = &PromptMessage.Val
 			}
+
 			c.ConfigHandler.PushResourcePack(res)
 
 		case packetid.ClientboundConfigStoreCookie:
@@ -191,7 +196,7 @@ func (c *Client) joinConfiguration(conn *net.Conn) error {
 			if err != nil {
 				return ConfigErr{"store cookie", err}
 			}
-			c.Cookies[string(key)] = []byte(payload)
+			c.Cookies[string(key)] = payload
 
 		case packetid.ClientboundConfigTransfer:
 			var host pk.String
@@ -207,6 +212,7 @@ func (c *Client) joinConfiguration(conn *net.Conn) error {
 			if err != nil {
 				return ConfigErr{"update enabled features", err}
 			}
+
 			c.ConfigHandler.EnableFeature(features)
 
 		case packetid.ClientboundConfigUpdateTags:
@@ -249,10 +255,10 @@ func (c *Client) joinConfiguration(conn *net.Conn) error {
 			if err != nil {
 				return ConfigErr{ErrStage, err}
 			}
-			knwonPacks := c.ConfigHandler.SelectDataPacks(packs)
+			knownPacks := c.ConfigHandler.SelectDataPacks(packs)
 			err = conn.WritePacket(pk.Marshal(
 				packetid.ServerboundConfigSelectKnownPacks,
-				pk.Array(knwonPacks),
+				pk.Array(knownPacks),
 			))
 			if err != nil {
 				return ConfigErr{ErrStage, err}
@@ -267,15 +273,18 @@ func (c *Client) joinConfiguration(conn *net.Conn) error {
 			if err != nil {
 				return ConfigErr{ErrStage, err}
 			}
+
 			for i := 0; i < int(length); i++ {
 				_, err = title.ReadFrom(r)
 				if err != nil {
 					return ConfigErr{ErrStage, err}
 				}
+
 				_, err = description.ReadFrom(r)
 				if err != nil {
 					return ConfigErr{ErrStage, err}
 				}
+
 				c.CustomReportDetails[string(title)] = string(description)
 			}
 		}
@@ -293,11 +302,14 @@ func (d DataPack) WriteTo(w io.Writer) (n int64, err error) {
 	if err != nil {
 		return n, err
 	}
+
 	n1, err := pk.String(d.ID).WriteTo(w)
 	if err != nil {
 		return n + n1, err
 	}
+
 	n2, err := pk.String(d.Version).WriteTo(w)
+
 	return n + n1 + n2, err
 }
 
@@ -306,11 +318,14 @@ func (d *DataPack) ReadFrom(r io.Reader) (n int64, err error) {
 	if err != nil {
 		return n, err
 	}
+
 	n1, err := (*pk.String)(&d.ID).ReadFrom(r)
 	if err != nil {
 		return n + n1, err
 	}
+
 	n2, err := (*pk.String)(&d.Version).ReadFrom(r)
+
 	return n + n1 + n2, err
 }
 
@@ -324,7 +339,7 @@ func NewDefaultConfigHandler() *DefaultConfigHandler {
 	}
 }
 
-func (d *DefaultConfigHandler) EnableFeature(features []pk.Identifier) {}
+func (d *DefaultConfigHandler) EnableFeature(_ []pk.Identifier) {}
 
 func (d *DefaultConfigHandler) PushResourcePack(res ResourcePack) {
 	d.resourcesPack = append(d.resourcesPack, res)
@@ -343,7 +358,7 @@ func (d *DefaultConfigHandler) PopAllResourcePack() {
 	d.resourcesPack = d.resourcesPack[:0]
 }
 
-func (d *DefaultConfigHandler) SelectDataPacks(packs []DataPack) []DataPack {
+func (d *DefaultConfigHandler) SelectDataPacks(_ []DataPack) []DataPack {
 	return []DataPack{}
 }
 
@@ -372,7 +387,6 @@ func (idleRegistryDecoder) ReadFrom(r io.Reader) (int64, error) {
 		}
 
 		if hasData {
-			// Skip the NBT data
 			var rawData nbt.RawMessage
 			n3, err = pk.NBTField{V: &rawData, AllowUnknownFields: true}.ReadFrom(r)
 			if err != nil {
@@ -382,6 +396,7 @@ func (idleRegistryDecoder) ReadFrom(r io.Reader) (int64, error) {
 
 		n += n1 + n2 + n3
 	}
+
 	return n, nil
 }
 
@@ -391,6 +406,7 @@ func (idleTagsDecoder) ReadFrom(r io.Reader) (int64, error) {
 	var count pk.VarInt
 	var tag pk.Identifier
 	var length pk.VarInt
+
 	n, err := count.ReadFrom(r)
 	if err != nil {
 		return n, err
@@ -401,10 +417,12 @@ func (idleTagsDecoder) ReadFrom(r io.Reader) (int64, error) {
 		if err != nil {
 			return n + n1, err
 		}
+
 		n2, err = length.ReadFrom(r)
 		if err != nil {
 			return n + n1 + n2, err
 		}
+
 		n += n1 + n2
 
 		var id pk.VarInt
@@ -413,8 +431,10 @@ func (idleTagsDecoder) ReadFrom(r io.Reader) (int64, error) {
 			if err != nil {
 				return n + n3, err
 			}
+
 			n += n3
 		}
 	}
+
 	return n, nil
 }

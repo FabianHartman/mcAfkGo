@@ -25,7 +25,7 @@ const (
 )
 
 var DefaultSettings = Settings{
-	Locale:             "zh_CN", // ^_^
+	Locale:             "zh_CN",
 	ViewDistance:       15,
 	ChatMode:           0,
 	DisplayedSkinParts: Jacket | LeftSleeve | RightSleeve | LeftPantsLeg | RightPantsLeg | Hat,

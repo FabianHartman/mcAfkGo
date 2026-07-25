@@ -41,6 +41,7 @@ func (c *Client) joinLogin(conn *net.Conn) error {
 			return LoginErr{"login start", err}
 		}
 	}
+
 	err = conn.WritePacket(pk.Marshal(
 		packetid.ServerboundLoginHello,
 		pk.String(c.Auth.Name),
@@ -49,31 +50,35 @@ func (c *Client) joinLogin(conn *net.Conn) error {
 	if err != nil {
 		return LoginErr{"login start", err}
 	}
+
 	receiving := "encrypt start"
+
 	for {
-		// Receive Packet
 		var p pk.Packet
-		if err = conn.ReadPacket(&p); err != nil {
+		err = conn.ReadPacket(&p)
+		if err != nil {
 			return LoginErr{receiving, err}
 		}
 
-		// Handle Packet
 		switch packetid.ClientboundPacketID(p.ID) {
-		case packetid.ClientboundLoginLoginDisconnect: // LoginDisconnect
+		case packetid.ClientboundLoginLoginDisconnect:
 			var reason chat.JsonMessage
 			err = p.Scan(&reason)
 			if err != nil {
 				return LoginErr{"disconnect", err}
 			}
+
 			return LoginErr{"disconnect", DisconnectErr(reason)}
 
-		case packetid.ClientboundLoginHello: // Encryption Request
-			if err := handleEncryptionRequest(conn, c, p); err != nil {
+		case packetid.ClientboundLoginHello:
+			err := handleEncryptionRequest(conn, c, p)
+			if err != nil {
 				return LoginErr{"encryption", err}
 			}
+
 			receiving = "set compression"
 
-		case packetid.ClientboundLoginGameProfile: // Login Success
+		case packetid.ClientboundLoginGameProfile:
 			err := p.Scan(
 				(*pk.UUID)(&c.UUID),
 				(*pk.String)(&c.Name),
@@ -81,27 +86,34 @@ func (c *Client) joinLogin(conn *net.Conn) error {
 			if err != nil {
 				return LoginErr{"login success", err}
 			}
+
 			err = conn.WritePacket(pk.Marshal(packetid.ServerboundLoginLoginAcknowledged))
 			if err != nil {
 				return LoginErr{"login success", err}
 			}
+
 			return nil
 
-		case packetid.ClientboundLoginLoginCompression: // Set Compression
+		case packetid.ClientboundLoginLoginCompression:
 			var threshold pk.VarInt
-			if err := p.Scan(&threshold); err != nil {
+			err := p.Scan(&threshold)
+			if err != nil {
 				return LoginErr{"compression", err}
 			}
+
 			conn.SetThreshold(int(threshold))
+
 			receiving = "login success"
 
-		case packetid.ClientboundLoginCustomQuery: // Login Plugin Request
+		case packetid.ClientboundLoginCustomQuery:
 			var (
 				msgid   pk.VarInt
 				channel pk.Identifier
 				data    pk.PluginMessageData
 			)
-			if err := p.Scan(&msgid, &channel, &data); err != nil {
+
+			err := p.Scan(&msgid, &channel, &data)
+			if err != nil {
 				return LoginErr{"Login Plugin", err}
 			}
 
@@ -114,10 +126,11 @@ func (c *Client) joinLogin(conn *net.Conn) error {
 				}
 			}
 
-			if err := conn.WritePacket(pk.Marshal(
+			err = conn.WritePacket(pk.Marshal(
 				packetid.ServerboundLoginCustomQueryAnswer,
 				msgid, PluginMessageData,
-			)); err != nil {
+			))
+			if err != nil {
 				return LoginErr{"login Plugin", err}
 			}
 
@@ -127,12 +140,13 @@ func (c *Client) joinLogin(conn *net.Conn) error {
 			if err != nil {
 				return LoginErr{"cookie request", err}
 			}
+
 			cookieContent := c.Cookies[string(key)]
 			err = conn.WritePacket(pk.Marshal(
 				packetid.ServerboundLoginCookieResponse,
 				key, pk.OptionEncoder[pk.ByteArray]{
 					Has: cookieContent != nil,
-					Val: pk.ByteArray(cookieContent),
+					Val: cookieContent,
 				},
 			))
 			if err != nil {
@@ -142,7 +156,6 @@ func (c *Client) joinLogin(conn *net.Conn) error {
 	}
 }
 
-// Auth includes an account
 type Auth struct {
 	Name string
 	UUID string
@@ -152,18 +165,16 @@ type Auth struct {
 func handleEncryptionRequest(conn *net.Conn, c *Client, p pk.Packet) error {
 	key, encoStream, decoStream := newSymmetricEncryption()
 
-	// Read EncryptionRequest
 	var er encryptionRequest
 	if err := p.Scan(&er); err != nil {
 		return err
 	}
 
-	err := loginAuth(c.Auth, key, er) // 向Mojang验证
+	err := loginAuth(c.Auth, key, er)
 	if err != nil {
 		return fmt.Errorf("login fail: %v", err)
 	}
 
-	// Write Encryption Key Response
 	p, err = genEncryptionKeyResponse(key, er.PublicKey, er.VerifyToken)
 	if err != nil {
 		return fmt.Errorf("gen encryption key response fail: %v", err)
@@ -193,9 +204,6 @@ func (e *encryptionRequest) ReadFrom(r io.Reader) (int64, error) {
 	}.ReadFrom(r)
 }
 
-// authDigest computes a special SHA-1 digest required for Minecraft web
-// authentication on Premium servers (online-mode=true).
-// Source: http://wiki.vg/Protocol_Encryption#Server
 func authDigest(serverID string, sharedSecret, publicKey []byte) string {
 	h := sha1.New()
 	h.Write([]byte(serverID))
@@ -203,13 +211,11 @@ func authDigest(serverID string, sharedSecret, publicKey []byte) string {
 	h.Write(publicKey)
 	hash := h.Sum(nil)
 
-	// Check for negative hashes
 	negative := (hash[0] & 0x80) == 0x80
 	if negative {
 		hash = twosComplement(hash)
 	}
 
-	// Trim away zeroes
 	res := strings.TrimLeft(hex.EncodeToString(hash), "0")
 	if negative {
 		res = "-" + res
@@ -218,9 +224,9 @@ func authDigest(serverID string, sharedSecret, publicKey []byte) string {
 	return res
 }
 
-// little endian
 func twosComplement(p []byte) []byte {
 	carry := true
+
 	for i := len(p) - 1; i >= 0; i-- {
 		p[i] = ^p[i]
 		if carry {
@@ -228,6 +234,7 @@ func twosComplement(p []byte) []byte {
 			p[i]++
 		}
 	}
+
 	return p
 }
 
@@ -264,6 +271,7 @@ func loginAuth(auth Auth, shareSecret []byte, er encryptionRequest) error {
 	if err != nil {
 		return fmt.Errorf("make request error: %v", err)
 	}
+
 	PostRequest.Header.Set("User-agent", "go-mc")
 	PostRequest.Header.Set("Connection", "keep-alive")
 	PostRequest.Header.Set("Content-Type", "application/json")
@@ -271,16 +279,19 @@ func loginAuth(auth Auth, shareSecret []byte, er encryptionRequest) error {
 	if err != nil {
 		return fmt.Errorf("post fail: %v", err)
 	}
-	defer resp.Body.Close()
+
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 
 	body, _ := io.ReadAll(resp.Body)
 	if resp.StatusCode != http.StatusNoContent {
 		return fmt.Errorf("msauth fail: %s", string(body))
 	}
+
 	return nil
 }
 
-// AES/CFB8 with random key
 func newSymmetricEncryption() (key []byte, encoStream, decoStream cipher.Stream) {
 	key = make([]byte, 16)
 	if _, err := rand.Read(key); err != nil {
@@ -291,29 +302,36 @@ func newSymmetricEncryption() (key []byte, encoStream, decoStream cipher.Stream)
 	if err != nil {
 		panic(err)
 	}
+
 	decoStream = CFB8.NewCFB8Decrypt(b, key)
 	encoStream = CFB8.NewCFB8Encrypt(b, key)
+
 	return
 }
 
 func genEncryptionKeyResponse(shareSecret, publicKey, verifyToken []byte) (erp pk.Packet, err error) {
-	iPK, err := x509.ParsePKIXPublicKey(publicKey) // Decode Public Key
+	iPK, err := x509.ParsePKIXPublicKey(publicKey)
 	if err != nil {
 		err = fmt.Errorf("decode public key fail: %v", err)
+
 		return
 	}
+
 	rsaKey := iPK.(*rsa.PublicKey)
 	cryptPK, err := rsa.EncryptPKCS1v15(rand.Reader, rsaKey, shareSecret)
 	if err != nil {
 		err = fmt.Errorf("encryption share secret fail: %v", err)
+
 		return
 	}
 
 	verifyT, err := rsa.EncryptPKCS1v15(rand.Reader, rsaKey, verifyToken)
 	if err != nil {
 		err = fmt.Errorf("encryption verfy tokenfail: %v", err)
+
 		return erp, err
 	}
+
 	return pk.Marshal(
 		packetid.ServerboundLoginKey,
 		pk.ByteArray(cryptPK),

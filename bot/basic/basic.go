@@ -16,6 +16,7 @@ type Player struct {
 
 func NewPlayer(c *bot.Client, settings Settings, events EventsListener) *Player {
 	p := &Player{c: c, Settings: settings}
+
 	c.Events.AddListener(
 		bot.PacketHandler{Priority: 0, ID: packetid.ClientboundLogin, F: p.handleLoginPacket},
 		bot.PacketHandler{Priority: 0, ID: packetid.ClientboundKeepAlive, F: p.handleKeepAlivePacket},
@@ -25,16 +26,16 @@ func NewPlayer(c *bot.Client, settings Settings, events EventsListener) *Player 
 		bot.PacketHandler{Priority: 0, ID: packetid.ClientboundStoreCookie, F: p.handleStoreCookiePacket},
 		bot.PacketHandler{Priority: 0, ID: packetid.ClientboundUpdateTags, F: p.handleUpdateTags},
 	)
+
 	events.attach(p)
+
 	return p
 }
 
 func (p *Player) Respawn() error {
-	const PerformRespawn = 0
-
 	err := p.c.Conn.WritePacket(pk.Marshal(
 		packetid.ServerboundClientCommand,
-		pk.VarInt(PerformRespawn),
+		pk.VarInt(0),
 	))
 	if err != nil {
 		return Error{err}

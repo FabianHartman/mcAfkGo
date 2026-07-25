@@ -11,7 +11,6 @@ func (p *Player) handlePingPacket(packet pk.Packet) error {
 		return Error{err}
 	}
 
-	// Response
 	err := p.c.Conn.WritePacket(pk.Packet{
 		ID:   int32(packetid.ServerboundPong),
 		Data: packet.Data,
@@ -19,5 +18,6 @@ func (p *Player) handlePingPacket(packet pk.Packet) error {
 	if err != nil {
 		return Error{err}
 	}
+
 	return nil
 }

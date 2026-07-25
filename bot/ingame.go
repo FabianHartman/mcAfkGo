@@ -10,26 +10,25 @@ import (
 
 func (c *Client) HandleGame() error {
 	for {
-		var p pk.Packet
-		// Read packets
-		if err := c.Conn.ReadPacket(&p); err != nil {
+		var packet pk.Packet
+
+		err := c.Conn.ReadPacket(&packet)
+		if err != nil {
 			return err
 		}
 
-		if p.ID == int32(packetid.BundleDelimiter) {
+		if packet.ID == int32(packetid.BundleDelimiter) {
 			err := c.handleBundlePackets()
 			if err != nil {
 				return err
 			}
 		} else {
-			// handle packets
-			err := c.handlePacket(p)
+			err := c.handlePacket(packet)
 			if err != nil {
 				return err
 			}
 
-			// return the packet buffer
-			c.Conn.pool.Put(p.Data)
+			c.Conn.pool.Put(packet.Data)
 		}
 	}
 }
@@ -46,42 +45,47 @@ func (d PacketHandlerError) Error() string {
 func (c *Client) handleBundlePackets() (err error) {
 	var packets []pk.Packet
 	for i := 0; i < 4096; i++ {
-		var p pk.Packet
-		// Read packets
-		if err := c.Conn.ReadPacket(&p); err != nil {
+		var packet pk.Packet
+		err := c.Conn.ReadPacket(&packet)
+		if err != nil {
 			return err
 		}
 
-		if p.ID == int32(packetid.BundleDelimiter) {
-			// bundle finished
+		if packet.ID == int32(packetid.BundleDelimiter) {
 			goto handlePackets
 		}
 
-		packets = append(packets, p)
+		packets = append(packets, packet)
 	}
+
 	return errors.New("packet number of a bundle out of limit")
 
 handlePackets:
 	for i := range packets {
-		if err := c.handlePacket(packets[i]); err != nil {
+		err := c.handlePacket(packets[i])
+		if err != nil {
 			return err
 		}
 	}
+
 	return nil
 }
 
 func (c *Client) handlePacket(p pk.Packet) (err error) {
 	packetID := packetid.ClientboundPacketID(p.ID)
 	for _, handler := range c.Events.generic {
-		if err = handler.F(p); err != nil {
+		err = handler.F(p)
+		if err != nil {
 			return PacketHandlerError{ID: packetID, Err: err}
 		}
 	}
+
 	for _, handler := range c.Events.handlers[packetID] {
 		err = handler.F(p)
 		if err != nil {
 			return PacketHandlerError{ID: packetID, Err: err}
 		}
 	}
+
 	return
 }

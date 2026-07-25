@@ -25,11 +25,11 @@ func (p *Player) handleUpdateTags(packet pk.Packet) error {
 
 		registry := p.c.Registries.Registry(string(registryID))
 		if registry == nil {
-			// Skip unknown registries - we don't need them
 			_, err = idleTagsDecoder{}.ReadFrom(r)
 			if err != nil {
 				return Error{err}
 			}
+
 			continue
 		}
 
@@ -37,6 +37,7 @@ func (p *Player) handleUpdateTags(packet pk.Packet) error {
 		if err != nil {
 			return Error{err}
 		}
+
 	}
 	return nil
 }
@@ -47,20 +48,24 @@ func (idleTagsDecoder) ReadFrom(r io.Reader) (int64, error) {
 	var count pk.VarInt
 	var tag pk.Identifier
 	var length pk.VarInt
+
 	n, err := count.ReadFrom(r)
 	if err != nil {
 		return n, err
 	}
+
 	for i := 0; i < int(count); i++ {
 		var n1, n2, n3 int64
 		n1, err = tag.ReadFrom(r)
 		if err != nil {
 			return n + n1, err
 		}
+
 		n2, err = length.ReadFrom(r)
 		if err != nil {
 			return n + n1 + n2, err
 		}
+
 		n += n1 + n2
 
 		var id pk.VarInt
@@ -69,8 +74,10 @@ func (idleTagsDecoder) ReadFrom(r io.Reader) (int64, error) {
 			if err != nil {
 				return n + n3, err
 			}
+
 			n += n3
 		}
 	}
+
 	return n, nil
 }
