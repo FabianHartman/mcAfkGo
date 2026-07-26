@@ -23,8 +23,10 @@ func (m StringifiedMessage) TagType() byte {
 		if d.scanWhile(scanContinue); d.opcode == scanError {
 			return TagEnd
 		}
+
 		literal := d.data[start:d.readIndex()]
 		tagType, _, _ := parseLiteral(literal)
+
 		return tagType
 
 	case scanBeginCompound:
@@ -37,10 +39,12 @@ func (m StringifiedMessage) TagType() byte {
 			if d.scanWhile(scanContinue); d.opcode == scanError {
 				return TagEnd
 			}
+
 			literal := d.data[start:d.readIndex()]
 			if d.opcode == scanSkipSpace {
 				d.scanWhile(scanSkipSpace)
 			}
+
 			if d.opcode == scanListType {
 				switch literal[0] {
 				case 'B':
@@ -52,27 +56,33 @@ func (m StringifiedMessage) TagType() byte {
 				}
 			}
 		}
+
 		return TagList
 	}
 }
 
 func (m StringifiedMessage) MarshalNBT(w io.Writer) error {
-	d := decodeState{data: []byte(m)}
-	d.scan.reset()
-	return writeValue(NewEncoder(w), &d, false, "")
+	state := decodeState{data: []byte(m)}
+
+	state.scan.reset()
+
+	return writeValue(NewEncoder(w), &state, false, "")
 }
 
 func (m *StringifiedMessage) UnmarshalNBT(tagType byte, r DecoderReader) error {
 	if tagType == TagEnd {
 		return ErrEND
 	}
-	var sb strings.Builder
+
+	var stringBuilder strings.Builder
 	d := NewDecoder(r)
-	err := m.encode(d, &sb, tagType)
+	err := m.encode(d, &stringBuilder, tagType)
 	if err != nil {
 		return err
 	}
-	*m = StringifiedMessage(sb.String())
+
+	*m = StringifiedMessage(stringBuilder.String())
+
 	return nil
 }
 
@@ -83,38 +93,46 @@ func (m *StringifiedMessage) encode(d *Decoder, sb *strings.Builder, tagType byt
 	case TagByte:
 		b, err := d.r.ReadByte()
 		sb.WriteString(strconv.FormatInt(int64(b), 10) + "B")
+
 		return err
 	case TagString:
 		str, err := d.readString()
 		writeEscapeStr(sb, str)
+
 		return err
 	case TagShort:
 		s, err := d.readInt16()
 		sb.WriteString(strconv.FormatInt(int64(s), 10) + "S")
+
 		return err
 	case TagInt:
 		i, err := d.readInt32()
 		sb.WriteString(strconv.FormatInt(int64(i), 10))
+
 		return err
 	case TagFloat:
 		i, err := d.readInt32()
 		f := float64(math.Float32frombits(uint32(i)))
 		sb.WriteString(strconv.FormatFloat(f, 'f', 10, 32) + "F")
+
 		return err
 	case TagLong:
 		i, err := d.readInt64()
 		sb.WriteString(strconv.FormatInt(i, 10) + "L")
+
 		return err
 	case TagDouble:
 		i, err := d.readInt64()
 		f := math.Float64frombits(uint64(i))
 		sb.WriteString(strconv.FormatFloat(f, 'f', 10, 64) + "D")
+
 		return err
 	case TagByteArray:
 		aryLen, err := d.readInt32()
 		if err != nil {
 			return err
 		}
+
 		first := true
 		sb.WriteString("[B;")
 		for i := int32(0); i < aryLen; i++ {
@@ -122,19 +140,23 @@ func (m *StringifiedMessage) encode(d *Decoder, sb *strings.Builder, tagType byt
 			if err != nil {
 				return err
 			}
+
 			if first {
 				first = false
 			} else {
 				sb.WriteString(",")
 			}
+
 			sb.WriteString(strconv.FormatInt(int64(b), 10) + "B")
 		}
+
 		sb.WriteString("]")
 	case TagIntArray:
 		aryLen, err := d.readInt32()
 		if err != nil {
 			return err
 		}
+
 		sb.WriteString("[I;")
 		first := true
 		for i := 0; i < int(aryLen); i++ {
@@ -142,19 +164,23 @@ func (m *StringifiedMessage) encode(d *Decoder, sb *strings.Builder, tagType byt
 			if err != nil {
 				return err
 			}
+
 			if first {
 				first = false
 			} else {
 				sb.WriteString(",")
 			}
+
 			sb.WriteString(strconv.FormatInt(int64(v), 10) + "I")
 		}
+
 		sb.WriteString("]")
 	case TagLongArray:
 		aryLen, err := d.readInt32()
 		if err != nil {
 			return err
 		}
+
 		first := true
 		sb.WriteString("[L;")
 		for i := 0; i < int(aryLen); i++ {
@@ -162,11 +188,13 @@ func (m *StringifiedMessage) encode(d *Decoder, sb *strings.Builder, tagType byt
 			if err != nil {
 				return err
 			}
+
 			if first {
 				first = false
 			} else {
 				sb.WriteString(",")
 			}
+
 			sb.WriteString(strconv.FormatInt(v, 10) + "L")
 		}
 		sb.WriteString("]")
@@ -175,22 +203,28 @@ func (m *StringifiedMessage) encode(d *Decoder, sb *strings.Builder, tagType byt
 		if err != nil {
 			return err
 		}
+
 		listLen, err := d.readInt32()
 		if err != nil {
 			return err
 		}
+
 		first := true
 		sb.WriteString("[")
+
 		for i := 0; i < int(listLen); i++ {
 			if first {
 				first = false
 			} else {
 				sb.WriteString(",")
 			}
-			if err := m.encode(d, sb, listType); err != nil {
+
+			err = m.encode(d, sb, listType)
+			if err != nil {
 				return err
 			}
 		}
+
 		sb.WriteString("]")
 	case TagCompound:
 		first := true
@@ -199,6 +233,7 @@ func (m *StringifiedMessage) encode(d *Decoder, sb *strings.Builder, tagType byt
 			if err != nil {
 				return err
 			}
+
 			if first {
 				sb.WriteString("{")
 				first = false
@@ -207,6 +242,7 @@ func (m *StringifiedMessage) encode(d *Decoder, sb *strings.Builder, tagType byt
 			}
 			if tt == TagEnd {
 				sb.WriteString("}")
+
 				break
 			}
 
@@ -224,7 +260,6 @@ func (m *StringifiedMessage) encode(d *Decoder, sb *strings.Builder, tagType byt
 func writeEscapeStr(sb *strings.Builder, str string) {
 	for _, v := range []byte(str) {
 		if !isAllowedInUnquotedString(v) {
-			// need quote
 			dc := strings.Count(str, `"`)
 			sc := strings.Count(str, `'`)
 			if dc > sc {
@@ -232,16 +267,20 @@ func writeEscapeStr(sb *strings.Builder, str string) {
 				if _, err := strings.NewReplacer(`'`, `\'`, `\`, `\\`).WriteString(sb, str); err != nil {
 					panic(err)
 				}
+
 				sb.WriteString("'")
 			} else {
 				sb.WriteString(`"`)
 				if _, err := strings.NewReplacer(`"`, `\"`, `\`, `\\`).WriteString(sb, str); err != nil {
 					panic(err)
 				}
+
 				sb.WriteString(`"`)
 			}
+
 			return
 		}
 	}
+
 	sb.WriteString(str)
 }

@@ -8,7 +8,7 @@ import (
 )
 
 type Ary[LEN VarInt | VarLong | Byte | UnsignedByte | Short | UnsignedShort | Int | Long] struct {
-	Ary any // Slice or Pointer of Slice of FieldEncoder, FieldDecoder or both (Field)
+	Ary any `desc:"Slice or Pointer of Slice of FieldEncoder, FieldDecoder or both (Field)"`
 }
 
 func (a Ary[LEN]) WriteTo(w io.Writer) (n int64, err error) {
@@ -16,8 +16,10 @@ func (a Ary[LEN]) WriteTo(w io.Writer) (n int64, err error) {
 	for array.Kind() == reflect.Ptr {
 		array = array.Elem()
 	}
+
 	Len := LEN(array.Len())
-	if nn, err := any(&Len).(FieldEncoder).WriteTo(w); err != nil {
+	nn, err := any(&Len).(FieldEncoder).WriteTo(w)
+	if err != nil {
 		return n, err
 	} else {
 		n += nn
@@ -30,16 +32,19 @@ func (a Ary[LEN]) WriteTo(w io.Writer) (n int64, err error) {
 			return n, err
 		}
 	}
+
 	return n, nil
 }
 
 func (a Ary[LEN]) ReadFrom(r io.Reader) (n int64, err error) {
 	var Len LEN
-	if nn, err := any(&Len).(FieldDecoder).ReadFrom(r); err != nil {
+	nn, err := any(&Len).(FieldDecoder).ReadFrom(r)
+	if err != nil {
 		return nn, err
 	} else {
 		n += nn
 	}
+
 	if Len < 0 {
 		return n, errors.New("array length less than zero")
 	}
@@ -48,6 +53,7 @@ func (a Ary[LEN]) ReadFrom(r io.Reader) (n int64, err error) {
 	for array.Kind() == reflect.Ptr {
 		array = array.Elem()
 	}
+
 	if !array.CanAddr() {
 		panic(errors.New("the contents of the Ary are not addressable"))
 	}
@@ -56,6 +62,7 @@ func (a Ary[LEN]) ReadFrom(r io.Reader) (n int64, err error) {
 	} else {
 		array.Slice(0, int(Len))
 	}
+
 	for i := 0; i < int(Len); i++ {
 		elem := array.Index(i)
 		nn, err := elem.Addr().Interface().(FieldDecoder).ReadFrom(r)
@@ -64,6 +71,7 @@ func (a Ary[LEN]) ReadFrom(r io.Reader) (n int64, err error) {
 			return n, err
 		}
 	}
+
 	return n, err
 }
 
@@ -71,15 +79,9 @@ func Array(ary any) Field {
 	return Ary[VarInt]{Ary: ary}
 }
 
-// Opt is an optional [Field] which sending/receiving or not is depending on its Has field.
-// When calling `WriteTo()` or `ReadFrom()`, if Has is true, the Field's `WriteTo` or `ReadFrom()` is called.
-// Otherwise, it does nothing and return 0 and nil.
-//
-// The different between [Opt] and [Option] is that [Opt] does NOT read or write the Has field for you.
-// Which should be cared.
 type Opt struct {
-	Has   any // Pointer of bool, or `func() bool`
-	Field any // FieldEncoder, FieldDecoder, `func() FieldEncoder`, `func() FieldDecoder` or `func() Field`
+	Has   any `desc:"Pointer of bool, or func() bool"`
+	Field any `desc:"FieldEncoder, FieldDecoder, func() FieldEncoder, func() FieldDecoder or func() Field"`
 }
 
 func (o Opt) has() bool {
@@ -111,6 +113,7 @@ func (o Opt) WriteTo(w io.Writer) (int64, error) {
 			panic("unsupported Field type: " + reflect.TypeOf(o.Field).String())
 		}
 	}
+
 	return 0, nil
 }
 
@@ -127,6 +130,7 @@ func (o Opt) ReadFrom(r io.Reader) (int64, error) {
 			panic("unsupported Field type: " + reflect.TypeOf(o.Field).String())
 		}
 	}
+
 	return 0, nil
 }
 
@@ -145,7 +149,9 @@ func (o Option[T, P]) WriteTo(w io.Writer) (n int64, err error) {
 	if err != nil || !o.Has {
 		return n1, err
 	}
+
 	n2, err := o.Val.WriteTo(w)
+
 	return n1 + n2, err
 }
 
@@ -154,20 +160,12 @@ func (o *Option[T, P]) ReadFrom(r io.Reader) (n int64, err error) {
 	if err != nil || !o.Has {
 		return n1, err
 	}
+
 	n2, err := P(&o.Val).ReadFrom(r)
+
 	return n1 + n2, err
 }
 
-// Pointer returns the pointer of Val if Has is true, otherwise return nil.
-func (o *Option[T, P]) Pointer() (p *T) {
-	if o.Has {
-		p = &o.Val
-	}
-	return
-}
-
-// OptionDecoder is basically same with [Option], but support [FieldDecoder] only.
-// This allowed wrapping a [FieldDecoder] type (which isn't a [FieldEncoder]) to an Option.
 type OptionDecoder[T any, P fieldPointer[T]] struct {
 	Has Boolean
 	Val T
@@ -178,12 +176,12 @@ func (o *OptionDecoder[T, P]) ReadFrom(r io.Reader) (n int64, err error) {
 	if err != nil || !o.Has {
 		return n1, err
 	}
+
 	n2, err := P(&o.Val).ReadFrom(r)
+
 	return n1 + n2, err
 }
 
-// OptionEncoder is basically same with [Option], but support [FieldEncoder] only.
-// This allowed wrapping a [FieldEncoder] type (which isn't a [FieldDecoder]) to an Option.
 type OptionEncoder[T FieldEncoder] struct {
 	Has Boolean
 	Val T
@@ -194,33 +192,37 @@ func (o OptionEncoder[T]) WriteTo(w io.Writer) (n int64, err error) {
 	if err != nil || !o.Has {
 		return n1, err
 	}
+
 	n2, err := o.Val.WriteTo(w)
+
 	return n1 + n2, err
 }
 
-type Tuple []any // FieldEncoder, FieldDecoder or both (Field)
+type Tuple []any
 
-// WriteTo write Tuple to io.Writer, panic when any of filed don't implement FieldEncoder
 func (t Tuple) WriteTo(w io.Writer) (n int64, err error) {
 	for _, v := range t {
 		nn, err := v.(FieldEncoder).WriteTo(w)
 		if err != nil {
 			return n, err
 		}
+
 		n += nn
 	}
+
 	return
 }
 
-// ReadFrom read Tuple from io.Reader, panic when any of field don't implement FieldDecoder
 func (t Tuple) ReadFrom(r io.Reader) (n int64, err error) {
 	for i, v := range t {
 		nn, err := v.(FieldDecoder).ReadFrom(r)
 		if err != nil {
 			return n, fmt.Errorf("decode tuple[%d] %T error: %w", i, v, err)
 		}
+
 		n += nn
 	}
+
 	return
 }
 
@@ -228,6 +230,7 @@ func CreateByteReader(reader io.Reader) io.ByteReader {
 	if byteReader, isByteReader := reader.(io.ByteReader); isByteReader {
 		return byteReader
 	}
+
 	return byteReaderWrapper{reader}
 }
 
@@ -237,6 +240,8 @@ type byteReaderWrapper struct {
 
 func (r byteReaderWrapper) ReadByte() (byte, error) {
 	var buf [1]byte
+
 	_, err := io.ReadFull(r.Reader, buf[:])
+
 	return buf[0], err
 }

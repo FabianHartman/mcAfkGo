@@ -33,7 +33,7 @@ func (m Message) MarshalNBT(w io.Writer) error {
 func (m *Message) UnmarshalNBT(tagType byte, r nbt.DecoderReader) error {
 	tagReader := bytes.NewReader([]byte{tagType})
 	decoder := nbt.NewDecoder(io.MultiReader(tagReader, r))
-	decoder.NetworkFormat(true) // TagType directlly followed the body
+	decoder.NetworkFormat(true)
 
 	switch tagType {
 	case nbt.TagString:
@@ -53,7 +53,7 @@ func (m *Message) UnmarshalNBT(tagType byte, r nbt.DecoderReader) error {
 func (t *TranslateArgs) UnmarshalNBT(tagType byte, r nbt.DecoderReader) error {
 	tagReader := bytes.NewReader([]byte{tagType})
 	decoder := nbt.NewDecoder(io.MultiReader(tagReader, r))
-	decoder.NetworkFormat(true) // TagType directlly followed the body
+	decoder.NetworkFormat(true)
 
 	switch tagType {
 	case nbt.TagList:
@@ -61,36 +61,44 @@ func (t *TranslateArgs) UnmarshalNBT(tagType byte, r nbt.DecoderReader) error {
 		if _, err := decoder.Decode(&value); err != nil {
 			return err
 		}
+
 		for _, v := range value {
 			*t = append(*t, v)
 		}
+
 		return nil
 	case nbt.TagByteArray:
 		var value []int8
 		if _, err := decoder.Decode(&value); err != nil {
 			return err
 		}
+
 		for _, v := range value {
 			*t = append(*t, strconv.FormatInt(int64(v), 10))
 		}
+
 		return nil
 	case nbt.TagIntArray:
 		var value []int32
 		if _, err := decoder.Decode(&value); err != nil {
 			return err
 		}
+
 		for _, v := range value {
 			*t = append(*t, strconv.FormatInt(int64(v), 10))
 		}
+
 		return nil
 	case nbt.TagLongArray:
 		var value []int64
 		if _, err := decoder.Decode(&value); err != nil {
 			return err
 		}
+
 		for _, v := range value {
-			*t = append(*t, strconv.FormatInt(int64(v), 10))
+			*t = append(*t, strconv.FormatInt(v, 10))
 		}
+
 		return nil
 	default:
 		return errors.New("unknown translation args type: '" + strconv.FormatUint(uint64(tagType), 16) + "'")

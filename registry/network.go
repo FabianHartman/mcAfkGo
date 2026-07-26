@@ -40,6 +40,7 @@ func (reg *Registry[E]) ReadFrom(r io.Reader) (int64, error) {
 
 		n += n1 + n2 + n3
 	}
+
 	return n, nil
 }
 
@@ -86,5 +87,6 @@ func (reg *Registry[E]) ReadTagsFrom(r io.Reader) (int64, error) {
 
 		reg.tags[string(tag)] = values
 	}
+
 	return n, nil
 }

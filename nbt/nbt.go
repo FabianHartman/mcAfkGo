@@ -1,12 +1,9 @@
-// Package nbt implement the Named Binary Tag format of Minecraft.
-// It provides api like encoding/json package.
 package nbt
 
 import (
 	"io"
 )
 
-// Tag type IDs
 const (
 	TagEnd byte = iota
 	TagByte
@@ -34,25 +31,21 @@ type Decoder struct {
 }
 
 func NewDecoder(r io.Reader) *Decoder {
-	d := new(Decoder)
-	if br, ok := r.(DecoderReader); ok {
-		d.r = br
+	decoder := new(Decoder)
+	decoderReader, ok := r.(DecoderReader)
+	if ok {
+		decoder.r = decoderReader
 	} else {
-		d.r = reader{r}
+		decoder.r = reader{r}
 	}
-	return d
+
+	return decoder
 }
 
-// DisallowUnknownFields makes the decoder return an error when unmarshalling a compound
-// tag item that has a tag name not present in the destination struct.
 func (d *Decoder) DisallowUnknownFields() {
 	d.disallowUnknownFields = true
 }
 
-// NetworkFormat controls wether the decoder parsing nbt in "network format".
-// Means it haven't a tag name for root tag.
-//
-// It is disabled by default.
 func (d *Decoder) NetworkFormat(enable bool) {
 	d.networkFormat = enable
 }
@@ -67,5 +60,6 @@ func (r reader) ReadByte() (byte, error) {
 	if n == 1 {
 		return b[0], nil
 	}
+
 	return 0, err
 }

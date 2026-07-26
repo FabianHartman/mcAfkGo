@@ -29,9 +29,11 @@ func (c *Registries) Registry(id string) RegistryCodec {
 		if !ok {
 			continue
 		}
+
 		if registryID == id {
 			return codecVal.Field(i).Addr().Interface().(RegistryCodec)
 		}
 	}
+
 	return nil
 }

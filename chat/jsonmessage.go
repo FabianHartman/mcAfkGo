@@ -17,7 +17,9 @@ func (m *JsonMessage) ReadFrom(r io.Reader) (int64, error) {
 	if err != nil {
 		return n, err
 	}
+
 	err = json.Unmarshal([]byte(code), (*Message)(m))
+
 	return n, err
 }
 
@@ -26,6 +28,7 @@ func (m JsonMessage) WriteTo(w io.Writer) (int64, error) {
 	if err != nil {
 		panic(err)
 	}
+
 	return pk.String(code).WriteTo(w)
 }
 
@@ -44,11 +47,11 @@ func (m *Message) UnmarshalJSON(raw []byte) (err error) {
 	}
 	switch raw[0] {
 	case '"':
-		return json.Unmarshal(raw, &m.Text) // Unmarshal as jsonString
+		return json.Unmarshal(raw, &m.Text)
 	case '{':
-		return json.Unmarshal(raw, (*rawMsgStruct)(m)) // Unmarshal as jsonMsg
+		return json.Unmarshal(raw, (*rawMsgStruct)(m))
 	case '[':
-		return json.Unmarshal(raw, &m.Extra) // Unmarshal as []Message
+		return json.Unmarshal(raw, &m.Extra)
 	default:
 		return errors.New("unknown chat message type: '" + string(raw[0]) + "'")
 	}
@@ -64,5 +67,6 @@ func (t *TranslateArgs) UnmarshalJSON(raw []byte) error {
 	for _, v := range v {
 		*t = append(*t, v)
 	}
+
 	return nil
 }

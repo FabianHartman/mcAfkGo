@@ -11,11 +11,11 @@ import (
 type Message struct {
 	Text string `json:"text" nbt:"text"`
 
-	Bold          bool `json:"bold,omitempty" nbt:"bold,omitempty"`                   // 粗体
-	Italic        bool `json:"italic,omitempty" nbt:"italic,omitempty"`               // 斜体
-	UnderLined    bool `json:"underlined,omitempty" nbt:"underlined,omitempty"`       // 下划线
-	StrikeThrough bool `json:"strikethrough,omitempty" nbt:"strikethrough,omitempty"` // 删除线
-	Obfuscated    bool `json:"obfuscated,omitempty" nbt:"obfuscated,omitempty"`       // 随机
+	Bold          bool `json:"bold,omitempty" nbt:"bold,omitempty"`
+	Italic        bool `json:"italic,omitempty" nbt:"italic,omitempty"`
+	UnderLined    bool `json:"underlined,omitempty" nbt:"underlined,omitempty"`
+	StrikeThrough bool `json:"strikethrough,omitempty" nbt:"strikethrough,omitempty"`
+	Obfuscated    bool `json:"obfuscated,omitempty" nbt:"obfuscated,omitempty"`
 
 	Font  string `json:"font,omitempty" nbt:"font,omitempty"`
 	Color string `json:"color,omitempty" nbt:"color,omitempty"`
@@ -107,6 +107,7 @@ func (m Message) ClearString() string {
 			msg.WriteString(m.Extra[i].ClearString())
 		}
 	}
+
 	return msg.String()
 }
 
@@ -115,15 +116,19 @@ func (m Message) String() string {
 	if m.Bold {
 		format.WriteString("1;")
 	}
+
 	if m.Italic {
 		format.WriteString("3;")
 	}
+
 	if m.UnderLined {
 		format.WriteString("4;")
 	}
+
 	if m.StrikeThrough {
 		format.WriteString("9;")
 	}
+
 	if format.Len() > 0 {
 		msg.WriteString("\033[" + format.String()[:format.Len()-1] + "m")
 	}
@@ -131,7 +136,6 @@ func (m Message) String() string {
 	text, ok := TransCtrlSeq(m.Text, true)
 	msg.WriteString(text)
 
-	// handle translate
 	if m.Translate != "" {
 		_, _ = fmt.Fprintf(&msg, translateMap[m.Translate], m.With...)
 	}
@@ -145,6 +149,7 @@ func (m Message) String() string {
 	if format.Len() > 0 || ok {
 		msg.WriteString("\033[0m")
 	}
+
 	return msg.String()
 }
 
@@ -158,11 +163,11 @@ func TransCtrlSeq(str string, ansi bool) (dst string, change bool) {
 			if ok {
 				if ansi {
 					change = true
-					return "\033[" + f + "m" // enable, add ANSI code
+					return "\033[" + f + "m"
 				}
-				return "" // disable, remove the § code
+				return ""
 			}
-			return str // not a § code
+			return str
 		},
 	)
 

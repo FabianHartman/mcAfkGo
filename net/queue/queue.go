@@ -29,25 +29,31 @@ func (p *LinkedListQueue[T]) Push(v T) bool {
 	if p.closed {
 		panic("push on closed queue")
 	}
+
 	p.queue.PushBack(v)
 	p.cond.Signal()
 	p.cond.L.Unlock()
+
 	return true
 }
 
 func (p *LinkedListQueue[T]) Pull() (v T, ok bool) {
 	p.cond.L.Lock()
 	for {
-		if elem := p.queue.Front(); elem != nil {
+		elem := p.queue.Front()
+		if elem != nil {
 			v = p.queue.Remove(elem).(T)
 			ok = true
 			break
 		} else if p.closed {
 			break
 		}
+
 		p.cond.Wait()
 	}
+
 	p.cond.L.Unlock()
+
 	return
 }
 
@@ -71,6 +77,7 @@ func (c ChannelQueue[T]) Push(v T) bool {
 
 func (c ChannelQueue[T]) Pull() (v T, ok bool) {
 	v, ok = <-c
+
 	return
 }
 

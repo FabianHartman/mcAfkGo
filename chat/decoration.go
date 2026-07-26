@@ -34,19 +34,24 @@ func (t *Type) ReadFrom(r io.Reader) (n int64, err error) {
 	if err != nil {
 		return n1, err
 	}
+
 	n2, err := t.SenderName.ReadFrom(r)
 	if err != nil {
 		return n1 + n2, fmt.Errorf("read sender name error: %w", err)
 	}
+
 	n3, err := hasTargetName.ReadFrom(r)
 	if err != nil {
 		return n1 + n2 + n3, fmt.Errorf("read has target name error: %w", err)
 	}
+
 	if hasTargetName {
 		t.TargetName = new(Message)
 		n4, err := t.TargetName.ReadFrom(r)
+
 		return n1 + n2 + n3 + n4, fmt.Errorf("read target name error: %w", err)
 	}
+
 	return n1 + n2 + n3, nil
 }
 
@@ -56,17 +61,22 @@ func (t *Type) WriteTo(w io.Writer) (n int64, err error) {
 	if err != nil {
 		return n1, err
 	}
+
 	n2, err := t.SenderName.WriteTo(w)
 	if err != nil {
 		return n1 + n2, err
 	}
+
 	n3, err := hasTargetName.WriteTo(w)
 	if err != nil {
 		return n1 + n2 + n3, err
 	}
+
 	if hasTargetName {
 		n4, err := t.TargetName.WriteTo(w)
+
 		return n1 + n2 + n3 + n4, err
 	}
+
 	return n1 + n2 + n3, nil
 }
